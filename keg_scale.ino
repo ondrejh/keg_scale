@@ -2,8 +2,7 @@
  * keg_scale
  * 
  * todo:
- *   esp8266 AP
- *   webi: output, calibration
+ *   webi: calibration
  *   eeprom: save calibration ect.
  */
 
@@ -14,12 +13,16 @@
 #include <Adafruit_SSD1306.h>
 
 #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
 
 // HX711 circuit wiring
 const int LOADCELL_DOUT_PIN = D3;
 const int LOADCELL_SCK_PIN = D4;
 
 HX711 scale;
+
+const int led = 16;
 
 #define MESS 16
 int32_t scale_mess[MESS];
@@ -35,6 +38,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // wifi ap settings
 const char *ssid = "Kegator";
 const char *password = "";
+
+ESP8266WebServer server(80);
 
 void display_raw_scale() {
   display.clearDisplay();
@@ -61,7 +66,7 @@ void display_wifi() {
   
   char buff[32];
   int blen;
-  IPAddress ip = WiFi.localIP();
+  IPAddress ip = WiFi.softAPIP();
   sprintf(buff, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
   blen = strlen(buff);
   display.setCursor(64 - blen*3, 20);     // Start at top-left corner
@@ -73,6 +78,37 @@ void display_wifi() {
   display.write(buff);  
 
   display.display();
+}
+
+void handleRoot() {
+  digitalWrite(led, 1);
+
+  char msg[1024];
+  int p = 0;
+  p += sprintf(&msg[p], "<!DOCTYPE html><html lang='cz'><head><meta charset='utf-8'><title>title</title></head><body>");
+  p += sprintf(&msg[p], "<p id='raw'>%d</p>", scale_avg);
+  p += sprintf(&msg[p], "</body></html>");
+
+  server.send(200, "text/html", msg);
+
+  digitalWrite(led, 0);
+}
+
+void handleNotFound() {
+  digitalWrite(led, 1);
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+  digitalWrite(led, 0);
 }
 
 void setup() {
@@ -99,12 +135,26 @@ void setup() {
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   pinMode(LOADCELL_DOUT_PIN, INPUT);
 
+  if (MDNS.begin("esp8266")) {
+    Serial.println("MDNS responder started");
+  }
+
+  server.on("/", handleRoot);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
+  Serial.println("HTTP server started");
+
   // display wifi connection
   display_wifi();
   delay(2000);
 }
 
 void loop() {
+  // http server
+  server.handleClient();
+  MDNS.update();
+  
   // scale reading
   if (scale.is_ready()) {
     int32_t reading = scale.read();
