@@ -2,6 +2,7 @@
  * keg_scale
  * 
  * todo:
+ *   files: index.html, jquery
  *   webi: calibration
  *   eeprom: save calibration ect.
  */
@@ -17,17 +18,22 @@
 #include <ESP8266mDNS.h>
 
 // HX711 circuit wiring
-const int LOADCELL_DOUT_PIN = D3;
-const int LOADCELL_SCK_PIN = D4;
+const int LOADCELL_DOUT_PIN = D5;
+const int LOADCELL_SCK_PIN = D6;
 
 HX711 scale;
 
-const int led = 16;
+const int WLED = BUILTIN_LED;
+const int SLED = 16;
+#define ON 0
+#define OFF 1
 
 #define MESS 16
 int32_t scale_mess[MESS];
 uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
+
+#define SCALE_PERIOD 200 //ms
 
 // display
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -36,8 +42,8 @@ int32_t scale_avg = 0;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // wifi ap settings
-const char *ssid = "Kegator";
-const char *password = "";
+const char *ssid = "Kegator1";
+const char *password = "k3Gat0rr";
 
 ESP8266WebServer server(80);
 
@@ -81,7 +87,7 @@ void display_wifi() {
 }
 
 void handleRoot() {
-  digitalWrite(led, 1);
+  digitalWrite(WLED, ON);
 
   char msg[1024];
   int p = 0;
@@ -91,28 +97,56 @@ void handleRoot() {
 
   server.send(200, "text/html", msg);
 
-  digitalWrite(led, 0);
+  digitalWrite(WLED, OFF);
+}
+
+void handleData() {
+  digitalWrite(WLED, ON);
+
+  char msg[1024];
+  sprintf(msg, "{\"raw\": %d}", scale_avg);
+
+  server.sendHeader("Access-Control-Max-Age", "10000");
+  server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "application/json", msg);
+
+  digitalWrite(WLED, OFF);
 }
 
 void handleNotFound() {
-  digitalWrite(led, 1);
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  digitalWrite(WLED, ON);
+  if (server.method() == HTTP_OPTIONS) {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Max-Age", "10000");
+    server.sendHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+    server.send(204);
+  } else {
+    String message = "File Not Found\n\n";
+    message += "URI: ";
+    message += server.uri();
+    message += "\nMethod: ";
+    message += (server.method() == HTTP_GET) ? "GET" : "POST";
+    message += "\nArguments: ";
+    message += server.args();
+    message += "\n";
+    for (uint8_t i = 0; i < server.args(); i++) {
+      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    }
+    server.send(404, "text/plain", "");
   }
-  server.send(404, "text/plain", message);
-  digitalWrite(led, 0);
+  digitalWrite(WLED, OFF);
 }
 
 void setup() {
   Serial.begin(115200);
+
+  pinMode(WLED, OUTPUT);
+  digitalWrite(WLED, OFF);
+  pinMode(SLED, OUTPUT);
+  digitalWrite(SLED, OFF);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
@@ -124,6 +158,9 @@ void setup() {
   display.display();
 
   // start the access point
+  IPAddress ip(192, 168, 42, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.softAPConfig(ip, ip, subnet);
   WiFi.softAP(ssid, password);
   Serial.print("Access Point \"");
   Serial.print(ssid);
@@ -140,6 +177,7 @@ void setup() {
   }
 
   server.on("/", handleRoot);
+  server.on("/data.json", handleData);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -147,7 +185,6 @@ void setup() {
 
   // display wifi connection
   display_wifi();
-  delay(2000);
 }
 
 void loop() {
@@ -156,7 +193,12 @@ void loop() {
   MDNS.update();
   
   // scale reading
-  if (scale.is_ready()) {
+  static uint32_t scale_tim = 0;
+  uint32_t now = millis();
+  if (((now - scale_tim) >= SCALE_PERIOD) && (scale.is_ready())) {
+    scale_tim = now;
+    digitalWrite(SLED, ON);
+
     int32_t reading = scale.read();
     if (reading != -1) {
       scale_avg -= scale_mess[mess_ptr];
@@ -168,6 +210,8 @@ void loop() {
     }
     else
       Serial.println("---");
+    
+    digitalWrite(SLED, OFF);
   }
 
   // display
