@@ -2,7 +2,7 @@
  * keg_scale
  * 
  * todo:
- *   webi: calibration
+ *   webi: calibration input
  *   eeprom: save calibration ect.
  */
 

@@ -6,16 +6,33 @@
     <script src="jquery-3.5.1.min.js"></script>
     <script>
         function load() {
-            var url = "http://192.168.42.1/data.json";
-            var jqxhr = $.getJSON( url, function( data ) {
-                $("#raw").text(data.raw);
+            var url = "data.json";
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                //data: data,
+                success: (function(data) {
+                    $("#raw").text(data.raw);                
+                }),
+                error: (function() {
+                    $("#raw").text('???');
+                }),
+                complete: (function() {
+                    setTimeout(function() { load(); }, 500);
+                }),
+                timeout: 3000 //3 second timeout
+            });
+            /*var jqxhr = $.getJSON( url, function( data ) {
             })
-        }
-        
-        var timer = window.setInterval(doSometimes, 500);
-
-        function doSometimes() {
-          load();
+                .done(function(data) {
+                    $("#raw").text(data.raw);                
+                })
+                .fail(function() {
+                    $("#raw").text('???');
+                })
+                .always(function() {
+                    
+                })*/
         }
     </script>
 </head>

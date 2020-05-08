@@ -11,16 +11,33 @@ const char *index_html PROGMEM = "\
     <script src=\"jquery-3.5.1.min.js\"></script>\n\
     <script>\n\
         function load() {\n\
-            var url = \"http://192.168.42.1/data.json\";\n\
-            var jqxhr = $.getJSON( url, function( data ) {\n\
-                $(\"#raw\").text(data.raw);\n\
+            var url = \"data.json\";\n\
+            $.ajax({\n\
+                url: url,\n\
+                dataType: 'json',\n\
+                //data: data,\n\
+                success: (function(data) {\n\
+                    $(\"#raw\").text(data.raw);\n\
+                }),\n\
+                error: (function() {\n\
+                    $(\"#raw\").text('???');\n\
+                }),\n\
+                complete: (function() {\n\
+                    setTimeout(function() { load(); }, 500);\n\
+                }),\n\
+                timeout: 3000 //3 second timeout\n\
+            });\n\
+            /*var jqxhr = $.getJSON( url, function( data ) {\n\
             })\n\
-        }\n\
+                .done(function(data) {\n\
+                    $(\"#raw\").text(data.raw);\n\
+                })\n\
+                .fail(function() {\n\
+                    $(\"#raw\").text('???');\n\
+                })\n\
+                .always(function() {\n\
 \n\
-        var timer = window.setInterval(doSometimes, 500);\n\
-\n\
-        function doSometimes() {\n\
-          load();\n\
+                })*/\n\
         }\n\
     </script>\n\
 </head>\n\
