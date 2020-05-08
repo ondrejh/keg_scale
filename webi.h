@@ -17,7 +17,7 @@ const char *index_html PROGMEM = "\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
                     $(\"#raw\").text(data.raw);\n\
-                    var s = '<tr><th>units</th><th>value</th></tr>';\n\
+                    var s = '<tr><th>units</th><th>raw value</th></tr>';\n\
                     $.each( data.calib , function(key, value) {\n\
                         s += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';\n\
                     });\n\
@@ -41,6 +41,7 @@ const char *index_html PROGMEM = "\
     <p>Measurement: <span id='units'>---</span> units</p>\n\
     <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>\n\
     <p id='clbtab'></p>\n\
+\n\
     <script>\n\
         $( \"#setcal\" ).click(function() {\n\
             var str = $(\"#calib\").val();\n\

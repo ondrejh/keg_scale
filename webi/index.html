@@ -12,7 +12,7 @@
                 dataType: 'json',
                 success: (function(data) {
                     $("#raw").text(data.raw);
-                    var s = '<tr><th>units</th><th>value</th></tr>';
+                    var s = '<tr><th>units</th><th>raw value</th></tr>';
                     $.each( data.calib , function(key, value) {
                         s += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';
                     });
@@ -36,6 +36,7 @@
     <p>Measurement: <span id='units'>---</span> units</p>
     <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>
     <p id='clbtab'></p>
+    
     <script>
         $( "#setcal" ).click(function() {
             var str = $("#calib").val();
