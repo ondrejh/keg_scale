@@ -34,6 +34,11 @@ int32_t scale_mess[MESS];
 uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
 
+#define CLBLEN 5
+int32_t calibx[CLBLEN] = {-7090000, -7350000};
+float caliby[CLBLEN] = {0.0, 0.5}; 
+int calp = 2;
+
 #define SCALE_PERIOD 200 //ms
 
 // display
@@ -95,15 +100,24 @@ void handleRoot() {
 
 void handleJquery() {
   digitalWrite(WLED, ON);
-  server.send(200, "application/jsond", jquery_bin);
+  server.send(200, "application/javascript", jquery_bin);
   digitalWrite(WLED, OFF);
 }
+
+
 
 void handleData() {
   digitalWrite(WLED, ON);
 
   char msg[1024];
-  sprintf(msg, "{\"raw\": %d}", scale_avg);
+  int p = 0;
+  p = sprintf(msg, "{\"raw\": %d, \"calib\": {", scale_avg);
+  bool first = true;
+  for (int i = 0; i < calp; i++) {
+    if (first) first = false; else p += sprintf(&msg[p], ", ");
+    p += sprintf(&msg[p], "\"u%0.1f\": %d", caliby[i], calibx[i]);
+  }
+  p += sprintf(&msg[p], "}}");
 
   server.sendHeader("Access-Control-Max-Age", "10000");
   server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");

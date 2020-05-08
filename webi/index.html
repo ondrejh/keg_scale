@@ -10,7 +10,6 @@
             $.ajax({
                 url: url,
                 dataType: 'json',
-                //data: data,
                 success: (function(data) {
                     $("#raw").text(data.raw);                
                 }),
@@ -18,26 +17,24 @@
                     $("#raw").text('???');
                 }),
                 complete: (function() {
-                    setTimeout(function() { load(); }, 500);
+                    setTimeout(function() { load(); }, 500); // next load in .5s
                 }),
-                timeout: 3000 //3 second timeout
+                timeout: 3000 //3s timeout to error
             });
-            /*var jqxhr = $.getJSON( url, function( data ) {
-            })
-                .done(function(data) {
-                    $("#raw").text(data.raw);                
-                })
-                .fail(function() {
-                    $("#raw").text('???');
-                })
-                .always(function() {
-                    
-                })*/
         }
     </script>
 </head>
 <body onload="load();">
     <h1>Kegator</h1>
     <p>Raw data: <span id='raw'>---</span></p>
+    <p>Measurement: <span id='units'>---</span> units</p>
+    <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>
+    <script>
+        $( "#setcal" ).click(function() {
+            var str = $("#calib").val();
+            $.get( "calib.php" , { add: str }); 
+            //alert( "click " + str );
+        });
+    </script>
 </body>
 </html>
