@@ -104,8 +104,6 @@ void handleJquery() {
   digitalWrite(WLED, OFF);
 }
 
-
-
 void handleData() {
   digitalWrite(WLED, ON);
 
@@ -125,6 +123,11 @@ void handleData() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "application/json", msg);
 
+  digitalWrite(WLED, OFF);
+}
+
+void handleCalib() {
+  digitalWrite(WLED, ON);
   digitalWrite(WLED, OFF);
 }
 

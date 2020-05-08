@@ -11,39 +11,42 @@ const char *index_html PROGMEM = "\
     <script src=\"jquery-3.5.1.min.js\"></script>\n\
     <script>\n\
         function load() {\n\
-            var url = \"data.json\";\n\
+            var url = \"http://192.168.42.1/data.json\";\n\
             $.ajax({\n\
                 url: url,\n\
                 dataType: 'json',\n\
-                //data: data,\n\
                 success: (function(data) {\n\
                     $(\"#raw\").text(data.raw);\n\
+                    var s = '<tr><th>units</th><th>value</th></tr>';\n\
+                    $.each( data.calib , function(key, value) {\n\
+                        s += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';\n\
+                    });\n\
+                    $(\"#clbtab\").html(s);\n\
+                    $(\"#status\").text('');\n\
                 }),\n\
                 error: (function() {\n\
-                    $(\"#raw\").text('???');\n\
+                    $(\"#status\").text(' ( offline )');\n\
                 }),\n\
                 complete: (function() {\n\
-                    setTimeout(function() { load(); }, 500);\n\
+                    setTimeout(function() { load(); }, 500); // next load in .5s\n\
                 }),\n\
-                timeout: 3000 //3 second timeout\n\
+                timeout: 3000 //3s timeout to error\n\
             });\n\
-            /*var jqxhr = $.getJSON( url, function( data ) {\n\
-            })\n\
-                .done(function(data) {\n\
-                    $(\"#raw\").text(data.raw);\n\
-                })\n\
-                .fail(function() {\n\
-                    $(\"#raw\").text('???');\n\
-                })\n\
-                .always(function() {\n\
-\n\
-                })*/\n\
         }\n\
     </script>\n\
 </head>\n\
 <body onload=\"load();\">\n\
-    <h1>Kegator</h1>\n\
+    <h1>Kegator<span id='status'></span></h1>\n\
     <p>Raw data: <span id='raw'>---</span></p>\n\
+    <p>Measurement: <span id='units'>---</span> units</p>\n\
+    <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>\n\
+    <p id='clbtab'></p>\n\
+    <script>\n\
+        $( \"#setcal\" ).click(function() {\n\
+            var str = $(\"#calib\").val();\n\
+            $.get( \"calib.php\" , { add: str });\n\
+        });\n\
+    </script>\n\
 </body>\n\
 </html>\n\
 ";
