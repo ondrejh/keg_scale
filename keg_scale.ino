@@ -53,6 +53,99 @@ const char *password = "k3Gat0rr";
 
 ESP8266WebServer server(80);
 
+void display_raw_scale();
+void display_wifi();
+
+void handleRoot();
+void handleJquery();
+void handleData();
+void handleCalib();
+void handleNotFound();
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(WLED, OUTPUT);
+  digitalWrite(WLED, OFF);
+  pinMode(SLED, OUTPUT);
+  digitalWrite(SLED, OFF);
+
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+
+  // show initial display buffer contents on the screen
+  display.display();
+
+  // start the access point
+  IPAddress ip(192, 168, 42, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.softAPConfig(ip, ip, subnet);
+  WiFi.softAP(ssid, password);
+  Serial.print("Access Point \"");
+  Serial.print(ssid);
+  Serial.println("\" started");
+  Serial.print("IP address:\t");
+  Serial.println(WiFi.softAPIP());
+
+  // init scale
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  pinMode(LOADCELL_DOUT_PIN, INPUT);
+
+  if (MDNS.begin("esp8266")) {
+    Serial.println("MDNS responder started");
+  }
+
+  server.on("/", handleRoot);
+  server.on(index_name, handleRoot);
+  server.on(jquery_name, handleJquery);
+  server.on("/data.json", handleData);
+  server.on("/calib.php", HTTP_GET, handleCalib);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
+  Serial.println("HTTP server started");
+
+  // display wifi connection
+  display_wifi();
+}
+
+void loop() {
+  // http server
+  server.handleClient();
+  MDNS.update();
+  
+  // scale reading
+  static uint32_t scale_tim = 0;
+  uint32_t now = millis();
+  if (((now - scale_tim) >= SCALE_PERIOD) && (scale.is_ready())) {
+    scale_tim = now;
+    digitalWrite(SLED, ON);
+
+    int32_t reading = scale.read();
+    if (reading != -1) {
+      scale_avg -= scale_mess[mess_ptr];
+      scale_mess[mess_ptr] = reading;
+      scale_avg += scale_mess[mess_ptr++];
+      mess_ptr %= MESS;
+      Serial.println(scale_avg);
+      display_raw_scale();
+    }
+    else
+      Serial.println("---");
+    
+    digitalWrite(SLED, OFF);
+  }
+
+  // display
+  
+}
+
+
+// --- display functions ---
+
 void display_raw_scale() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -91,6 +184,9 @@ void display_wifi() {
 
   display.display();
 }
+
+
+// --- web server handlers ---
 
 void handleRoot() {
   digitalWrite(WLED, ON);
@@ -191,85 +287,4 @@ void handleNotFound() {
     server.send(404, "text/plain", "");
   }
   digitalWrite(WLED, OFF);
-}
-
-void setup() {
-  Serial.begin(115200);
-
-  pinMode(WLED, OUTPUT);
-  digitalWrite(WLED, OFF);
-  pinMode(SLED, OUTPUT);
-  digitalWrite(SLED, OFF);
-
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
-
-  // show initial display buffer contents on the screen
-  display.display();
-
-  // start the access point
-  IPAddress ip(192, 168, 42, 1);
-  IPAddress subnet(255, 255, 255, 0);
-  WiFi.softAPConfig(ip, ip, subnet);
-  WiFi.softAP(ssid, password);
-  Serial.print("Access Point \"");
-  Serial.print(ssid);
-  Serial.println("\" started");
-  Serial.print("IP address:\t");
-  Serial.println(WiFi.softAPIP());
-
-  // init scale
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  pinMode(LOADCELL_DOUT_PIN, INPUT);
-
-  if (MDNS.begin("esp8266")) {
-    Serial.println("MDNS responder started");
-  }
-
-  server.on("/", handleRoot);
-  server.on(index_name, handleRoot);
-  server.on(jquery_name, handleJquery);
-  server.on("/data.json", handleData);
-  server.on("/calib.php", HTTP_GET, handleCalib);
-  server.onNotFound(handleNotFound);
-
-  server.begin();
-  Serial.println("HTTP server started");
-
-  // display wifi connection
-  display_wifi();
-}
-
-void loop() {
-  // http server
-  server.handleClient();
-  MDNS.update();
-  
-  // scale reading
-  static uint32_t scale_tim = 0;
-  uint32_t now = millis();
-  if (((now - scale_tim) >= SCALE_PERIOD) && (scale.is_ready())) {
-    scale_tim = now;
-    digitalWrite(SLED, ON);
-
-    int32_t reading = scale.read();
-    if (reading != -1) {
-      scale_avg -= scale_mess[mess_ptr];
-      scale_mess[mess_ptr] = reading;
-      scale_avg += scale_mess[mess_ptr++];
-      mess_ptr %= MESS;
-      Serial.println(scale_avg);
-      display_raw_scale();
-    }
-    else
-      Serial.println("---");
-    
-    digitalWrite(SLED, OFF);
-  }
-
-  // display
-  
 }
