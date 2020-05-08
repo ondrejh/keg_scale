@@ -113,7 +113,7 @@ void handleData() {
   bool first = true;
   for (int i = 0; i < calp; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");
-    p += sprintf(&msg[p], "\"u%0.1f\": %d", caliby[i], calibx[i]);
+    p += sprintf(&msg[p], "\"%0.1f\": %d", caliby[i], calibx[i]);
   }
   p += sprintf(&msg[p], "}}");
 
@@ -128,6 +128,43 @@ void handleData() {
 
 void handleCalib() {
   digitalWrite(WLED, ON);
+
+  char msg[1024];
+
+  if (server.hasArg("add")) {
+    char sval[16];
+    server.arg("add").toCharArray(sval, 16);
+    float val;
+    if (sscanf(sval, "%f", &val) != 1) {
+      sprintf(msg, "Error: input arg '%s' can't be converted to float", sval); 
+    }
+    else {
+      int i;
+      for (i=0; i<calp; i++) {
+        if (val == caliby[i]) {
+          calibx[i] = scale_avg;
+          sprintf(msg, "Value %s updated to %d", sval, scale_avg);
+          break;
+        }
+      }
+      if (i == calp) {
+        if (calp < CLBLEN) {
+          calibx[calp] = scale_avg;
+          caliby[calp++] = val;
+          sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
+        }
+        else {
+          sprintf(msg, "Error: maximum number of callibration points reached");
+        }
+      }
+    }
+  }
+  else {
+    sprintf(msg, "Error: no 'add' arg found");
+  }
+
+  server.send(200, "text/html", msg);
+  
   digitalWrite(WLED, OFF);
 }
 
@@ -196,6 +233,7 @@ void setup() {
   server.on(index_name, handleRoot);
   server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
+  server.on("/calib.php", HTTP_GET, handleCalib);
   server.onNotFound(handleNotFound);
 
   server.begin();
