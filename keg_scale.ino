@@ -90,15 +90,13 @@ void display_wifi() {
 
 void handleRoot() {
   digitalWrite(WLED, ON);
+  server.send(200, "text/html", index_html);
+  digitalWrite(WLED, OFF);
+}
 
-  /*char msg[1024];
-  int p = 0;
-  p += sprintf(&msg[p], "<!DOCTYPE html><html lang='cz'><head><meta charset='utf-8'><title>title</title></head><body>");
-  p += sprintf(&msg[p], "<p id='raw'>%d</p>", scale_avg);
-  p += sprintf(&msg[p], "</body></html>");*/
-
-  server.send(200, "text/html", index_cont);
-
+void handleJquery() {
+  digitalWrite(WLED, ON);
+  server.send(200, "application/jsond", jquery_bin);
   digitalWrite(WLED, OFF);
 }
 
@@ -179,6 +177,8 @@ void setup() {
   }
 
   server.on("/", handleRoot);
+  server.on(index_name, handleRoot);
+  server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
   server.onNotFound(handleNotFound);
 
