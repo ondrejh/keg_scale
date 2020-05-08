@@ -2,7 +2,6 @@
  * keg_scale
  * 
  * todo:
- *   improve webi import: html lineend format
  *   webi: calibration
  *   eeprom: save calibration ect.
  */

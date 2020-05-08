@@ -3,32 +3,32 @@
 
 const char *index_name PROGMEM = "/index.html";
 const char *index_html PROGMEM = "\
-<!DOCTYPE html>\
-<html lang='cz'>\
-<head>\
-    <meta charset='utf-8'>\
-    <title>scale</title>\
-    <script src=\"jquery-3.5.1.min.js\"></script>\
-    <script>\
-        function load() {\
-            var url = \"http://192.168.42.1/data.json\";\
-            var jqxhr = $.getJSON( url, function( data ) {\
-                $(\"#raw\").text(data.raw);\
-            })\
-        }\
-\
-        var timer = window.setInterval(doSometimes, 500);\
-\
-        function doSometimes() {\
-          load();\
-        }\
-    </script>\
-</head>\
-<body onload=\"load();\">\
-    <h1>Kegator</h1>\
-    <p>Raw data: <span id='raw'>---</span></p>\
-</body>\
-</html>\
+<!DOCTYPE html>\n\
+<html lang='cz'>\n\
+<head>\n\
+    <meta charset='utf-8'>\n\
+    <title>scale</title>\n\
+    <script src=\"jquery-3.5.1.min.js\"></script>\n\
+    <script>\n\
+        function load() {\n\
+            var url = \"http://192.168.42.1/data.json\";\n\
+            var jqxhr = $.getJSON( url, function( data ) {\n\
+                $(\"#raw\").text(data.raw);\n\
+            })\n\
+        }\n\
+\n\
+        var timer = window.setInterval(doSometimes, 500);\n\
+\n\
+        function doSometimes() {\n\
+          load();\n\
+        }\n\
+    </script>\n\
+</head>\n\
+<body onload=\"load();\">\n\
+    <h1>Kegator</h1>\n\
+    <p>Raw data: <span id='raw'>---</span></p>\n\
+</body>\n\
+</html>\n\
 ";
 
 #define JQUERY_LEN 89477

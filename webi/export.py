@@ -16,7 +16,7 @@ def import_html(fname):
     for line in open(fname, 'r'):
         line = line.replace('"', '\\"')
         line = line.rstrip()
-        line += '\\\n'
+        line += '\\n\\\n'
         sout += line
     sout += '";\n\n'
     return sout
