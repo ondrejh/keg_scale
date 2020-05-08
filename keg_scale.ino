@@ -43,6 +43,7 @@ union {
     uint8_t p;
     int32_t x[CLBLEN];
     float y[CLBLEN];
+    uint8_t chsum;
   } calib;
   uint8_t d[sizeof(calib)];
 } clb_eeprom;
@@ -79,13 +80,25 @@ void set_calib_default() {
 
 void save_calib() {
   uint32_t adr = EEPROM_CALIB_ADDR;
-  EEPROM.put(adr, clb_eeprom.d);
+  uint8_t chsum = 0;
+  for (int i=0; i<(sizeof(clb_eeprom.d)-1); i++) {
+    EEPROM.write(adr ++, clb_eeprom.d[i]);
+    chsum += clb_eeprom.d[i];
+  }
+  chsum = 0x00 - chsum;
+  EEPROM.write(adr, chsum);
   EEPROM.commit();
 }
 
 void load_calib() {
   uint32_t adr = EEPROM_CALIB_ADDR;
-  EEPROM.get(adr, clb_eeprom.d);
+  uint8_t chsum = 0;
+  for (int i=0; i<sizeof(clb_eeprom.d); i++) {
+    clb_eeprom.d[i] = EEPROM.read(adr + i);
+    chsum += clb_eeprom.d[i];
+  }
+  if ((chsum!=0) || (clb_eeprom.calib.p < 2) || (clb_eeprom.calib.p >= CLBLEN))
+    set_calib_default();
 }
 
 // --- display functions ---
@@ -139,10 +152,13 @@ void setup() {
   digitalWrite(SLED, OFF);
 
   // init eeprom data
-  EEPROM.begin(64);
+  EEPROM.begin(512);
+  /*uint8_t a = EEPROM.read(0);
+  a += 1;
+  EEPROM.write(0, a);
+  EEPROM.commit();
+  Serial.print(a);*/
   load_calib();
-  if (clb_eeprom.calib.p < 2)
-    set_calib_default();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
