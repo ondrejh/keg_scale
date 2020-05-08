@@ -17,6 +17,8 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
+#include "webi.h"
+
 // HX711 circuit wiring
 const int LOADCELL_DOUT_PIN = D5;
 const int LOADCELL_SCK_PIN = D6;
@@ -89,13 +91,13 @@ void display_wifi() {
 void handleRoot() {
   digitalWrite(WLED, ON);
 
-  char msg[1024];
+  /*char msg[1024];
   int p = 0;
   p += sprintf(&msg[p], "<!DOCTYPE html><html lang='cz'><head><meta charset='utf-8'><title>title</title></head><body>");
   p += sprintf(&msg[p], "<p id='raw'>%d</p>", scale_avg);
-  p += sprintf(&msg[p], "</body></html>");
+  p += sprintf(&msg[p], "</body></html>");*/
 
-  server.send(200, "text/html", msg);
+  server.send(200, "text/html", index_cont);
 
   digitalWrite(WLED, OFF);
 }
