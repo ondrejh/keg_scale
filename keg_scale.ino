@@ -2,7 +2,6 @@
  * keg_scale
  * 
  * todo:
- *   webi: calibration input
  *   eeprom: save calibration ect.
  */
 
@@ -15,6 +14,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+
+#include <EEPROM.h>
 
 #include "webi.h"
 
@@ -34,10 +35,17 @@ int32_t scale_mess[MESS];
 uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
 
+// eeprom calibration data
+#define EEPROM_CALIB_ADDR 0
 #define CLBLEN 5
-int32_t calibx[CLBLEN] = {-7090000, -7350000};
-float caliby[CLBLEN] = {0.0, 0.5}; 
-int calp = 2;
+union {
+  struct {
+    uint8_t p;
+    int32_t x[CLBLEN];
+    float y[CLBLEN];
+  } calib;
+  uint8_t d[sizeof(calib)];
+} clb_eeprom;
 
 #define SCALE_PERIOD 200 //ms
 
@@ -58,6 +66,27 @@ void handleJquery();
 void handleData();
 void handleCalib();
 void handleNotFound();
+
+// --- eeprom functions ---
+
+void set_calib_default() {
+  clb_eeprom.calib.p = 2;
+  clb_eeprom.calib.x[0] = -7090000;
+  clb_eeprom.calib.x[1] = -7350000;
+  clb_eeprom.calib.y[0] = 0.0;
+  clb_eeprom.calib.y[1] = 0.5;  
+}
+
+void save_calib() {
+  uint32_t adr = EEPROM_CALIB_ADDR;
+  EEPROM.put(adr, clb_eeprom.d);
+  EEPROM.commit();
+}
+
+void load_calib() {
+  uint32_t adr = EEPROM_CALIB_ADDR;
+  EEPROM.get(adr, clb_eeprom.d);
+}
 
 // --- display functions ---
 
@@ -108,6 +137,12 @@ void setup() {
   digitalWrite(WLED, OFF);
   pinMode(SLED, OUTPUT);
   digitalWrite(SLED, OFF);
+
+  // init eeprom data
+  EEPROM.begin(64);
+  load_calib();
+  if (clb_eeprom.calib.p < 2)
+    set_calib_default();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
@@ -185,16 +220,16 @@ void loop() {
 // other utils
 
 void bubble_calib(void) {
-  for (int i=1; i<calp; i++) {
+  for (int i=1; i<clb_eeprom.calib.p; i++) {
     int cnt = 0;
-    for (int j=1; j<calp; j++) {
-      if (calibx[j-1] > calibx[j]) {
-        int32_t x = calibx[j];
-        float y = caliby[j];
-        calibx[j] = calibx[j-1];
-        caliby[j] = caliby[j-1];
-        calibx[j-1] = x;
-        caliby[j-1] = y;
+    for (int j=1; j<clb_eeprom.calib.p; j++) {
+      if (clb_eeprom.calib.x[j-1] > clb_eeprom.calib.x[j]) {
+        int32_t x = clb_eeprom.calib.x[j];
+        float y = clb_eeprom.calib.y[j];
+        clb_eeprom.calib.x[j] = clb_eeprom.calib.x[j-1];
+        clb_eeprom.calib.y[j] = clb_eeprom.calib.y[j-1];
+        clb_eeprom.calib.x[j-1] = x;
+        clb_eeprom.calib.y[j-1] = y;
         cnt ++;
       }
     }
@@ -225,9 +260,9 @@ void handleData() {
   int p = 0;
   p = sprintf(msg, "{\"raw\": %d, \"calib\": {", scale_avg);
   bool first = true;
-  for (int i = 0; i < calp; i++) {
+  for (int i = 0; i < clb_eeprom.calib.p; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");
-    p += sprintf(&msg[p], "\"%0.1f\": %d", caliby[i], calibx[i]);
+    p += sprintf(&msg[p], "\"%0.1f\": %d", clb_eeprom.calib.y[i], clb_eeprom.calib.x[i]);
   }
   p += sprintf(&msg[p], "}}");
 
@@ -254,19 +289,20 @@ void handleCalib() {
     }
     else {
       int i;
-      for (i=0; i<calp; i++) {
-        if (val == caliby[i]) {
-          calibx[i] = scale_avg;
+      for (i=0; i<clb_eeprom.calib.p; i++) {
+        if (val == clb_eeprom.calib.y[i]) {
+          clb_eeprom.calib.x[i] = scale_avg;
           sprintf(msg, "Value %s updated to %d", sval, scale_avg);
           break;
         }
       }
-      if (i == calp) {
-        if (calp < CLBLEN) {
-          calibx[calp] = scale_avg;
-          caliby[calp] = val;
-          calp ++;
+      if (i == clb_eeprom.calib.p) {
+        if (clb_eeprom.calib.p < CLBLEN) {
+          clb_eeprom.calib.x[clb_eeprom.calib.p] = scale_avg;
+          clb_eeprom.calib.y[clb_eeprom.calib.p] = val;
+          clb_eeprom.calib.p ++;
           bubble_calib();
+          save_calib();
           sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
         }
         else {
@@ -283,12 +319,14 @@ void handleCalib() {
       sprintf(msg, "Error: input arg '%s' can't be converted to int", sval); 
     }
     else {
-      if ((val > 0) && (val <= calp) && (calp > 2)) {
+      if ((val > 0) && (val <= clb_eeprom.calib.p) && (clb_eeprom.calib.p > 2)) {
         for (int i=val - 1; i < (CLBLEN - 1); i++) {
-          calibx[i] = calibx[i + 1];
-          caliby[i] = caliby[i + 1];
+          clb_eeprom.calib.x[i] = clb_eeprom.calib.x[i + 1];
+          clb_eeprom.calib.y[i] = clb_eeprom.calib.y[i + 1];
         }
-        calp --;
+        clb_eeprom.calib.p --;
+        save_calib();
+        
         sprintf(msg, "Value %s deleted from callibration", sval);
       }
       else {
