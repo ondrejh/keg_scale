@@ -53,14 +53,53 @@ const char *password = "k3Gat0rr";
 
 ESP8266WebServer server(80);
 
-void display_raw_scale();
-void display_wifi();
-
 void handleRoot();
 void handleJquery();
 void handleData();
 void handleCalib();
 void handleNotFound();
+
+// --- display functions ---
+
+void display_raw_scale() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  
+  char buff[32];
+  int blen;
+
+  display.setTextSize(2);
+  sprintf(buff, "%d", scale_avg);
+  blen = strlen(buff);
+  display.setCursor(64 - blen*6, 12);
+  display.write(buff);
+  display.display();  
+}
+
+void display_wifi() {
+  display.clearDisplay();
+  display.setTextSize(1);      // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  
+  char buff[32];
+  int blen;
+  IPAddress ip = WiFi.softAPIP();
+  sprintf(buff, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+  blen = strlen(buff);
+  display.setCursor(64 - blen*3, 20);     // Start at top-left corner
+  display.write(buff);
+
+  sprintf(buff, "SSID: %s", ssid);
+  blen = strlen(buff);
+  display.setCursor(64 - blen*3, 4);     // Start at top-left corner
+  display.write(buff);  
+
+  display.display();
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -143,46 +182,25 @@ void loop() {
   
 }
 
+// other utils
 
-// --- display functions ---
-
-void display_raw_scale() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-  
-  char buff[32];
-  int blen;
-
-  display.setTextSize(2);
-  sprintf(buff, "%d", scale_avg);
-  blen = strlen(buff);
-  display.setCursor(64 - blen*6, 12);
-  display.write(buff);
-  display.display();  
-}
-
-void display_wifi() {
-  display.clearDisplay();
-  display.setTextSize(1);      // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-  
-  char buff[32];
-  int blen;
-  IPAddress ip = WiFi.softAPIP();
-  sprintf(buff, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-  blen = strlen(buff);
-  display.setCursor(64 - blen*3, 20);     // Start at top-left corner
-  display.write(buff);
-
-  sprintf(buff, "SSID: %s", ssid);
-  blen = strlen(buff);
-  display.setCursor(64 - blen*3, 4);     // Start at top-left corner
-  display.write(buff);  
-
-  display.display();
+void bubble_calib(void) {
+  for (int i=1; i<calp; i++) {
+    int cnt = 0;
+    for (int j=1; j<calp; j++) {
+      if (calibx[j-1] > calibx[j]) {
+        int32_t x = calibx[j];
+        float y = caliby[j];
+        calibx[j] = calibx[j-1];
+        caliby[j] = caliby[j-1];
+        calibx[j-1] = x;
+        caliby[j-1] = y;
+        cnt ++;
+      }
+    }
+    if (cnt == 0)
+      break;
+  }
 }
 
 
@@ -246,7 +264,9 @@ void handleCalib() {
       if (i == calp) {
         if (calp < CLBLEN) {
           calibx[calp] = scale_avg;
-          caliby[calp++] = val;
+          caliby[calp] = val;
+          calp ++;
+          bubble_calib();
           sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
         }
         else {
@@ -255,11 +275,33 @@ void handleCalib() {
       }
     }
   }
+  else if (server.hasArg("del")) {
+    char sval[16];
+    server.arg("del").toCharArray(sval, 16);
+    unsigned int val;
+    if (sscanf(sval, "%d", &val) != 1) {
+      sprintf(msg, "Error: input arg '%s' can't be converted to int", sval); 
+    }
+    else {
+      if ((val > 0) && (val <= calp) && (calp > 2)) {
+        for (int i=val - 1; i < (CLBLEN - 1); i++) {
+          calibx[i] = calibx[i + 1];
+          caliby[i] = caliby[i + 1];
+        }
+        calp --;
+        sprintf(msg, "Value %s deleted from callibration", sval);
+      }
+      else {
+        sprintf(msg, "Value %s can't be deleted from callibration", sval);
+      }
+    }
+  }
   else {
     sprintf(msg, "Error: no 'add' arg found");
   }
 
   server.send(200, "text/html", msg);
+
   
   digitalWrite(WLED, OFF);
 }

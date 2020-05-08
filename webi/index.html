@@ -12,9 +12,12 @@
                 dataType: 'json',
                 success: (function(data) {
                     $("#raw").text(data.raw);
-                    var s = '<tr><th>units</th><th>raw value</th></tr>';
+                    var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';
+                    var cnt = 1;
                     $.each( data.calib , function(key, value) {
-                        s += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';
+                        s += '<tr><td>' + key + '</td><td>' + value +
+                            '</td><td><button id="delcal" value="' + cnt + '">Delete</button></td></tr>';
+                        cnt += 1;
                     });
                     $("#clbtab").html(s);
                     $("#status").text('');                    
@@ -34,13 +37,17 @@
     <h1>Kegator<span id='status'></span></h1>
     <p>Raw data: <span id='raw'>---</span></p>
     <p>Measurement: <span id='units'>---</span> units</p>
-    <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>
+    <p>Callibration: <input type='number' id='calib' step='0.1'> units <input type='button' id='setcal' value='Set'></p>
     <p id='clbtab'></p>
     
     <script>
         $( "#setcal" ).click(function() {
             var str = $("#calib").val();
             $.get( "calib.php" , { add: str });
+        });
+        $(document).on("click", "#delcal", function(){
+            var str = $(this).val();
+            $.get( "calib.php" , { del: str });
         });
     </script>
 </body>

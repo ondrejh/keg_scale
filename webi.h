@@ -17,9 +17,12 @@ const char *index_html PROGMEM = "\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
                     $(\"#raw\").text(data.raw);\n\
-                    var s = '<tr><th>units</th><th>raw value</th></tr>';\n\
+                    var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';\n\
+                    var cnt = 1;\n\
                     $.each( data.calib , function(key, value) {\n\
-                        s += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';\n\
+                        s += '<tr><td>' + key + '</td><td>' + value +\n\
+                            '</td><td><button id=\"delcal\" value=\"' + cnt + '\">Delete</button></td></tr>';\n\
+                        cnt += 1;\n\
                     });\n\
                     $(\"#clbtab\").html(s);\n\
                     $(\"#status\").text('');\n\
@@ -39,13 +42,17 @@ const char *index_html PROGMEM = "\
     <h1>Kegator<span id='status'></span></h1>\n\
     <p>Raw data: <span id='raw'>---</span></p>\n\
     <p>Measurement: <span id='units'>---</span> units</p>\n\
-    <p>Callibration: <input type='number' id='calib' step='0.1'\> units <input type='button' id='setcal' name='calib' value='Set'\></p>\n\
+    <p>Callibration: <input type='number' id='calib' step='0.1'> units <input type='button' id='setcal' value='Set'></p>\n\
     <p id='clbtab'></p>\n\
 \n\
     <script>\n\
         $( \"#setcal\" ).click(function() {\n\
             var str = $(\"#calib\").val();\n\
             $.get( \"calib.php\" , { add: str });\n\
+        });\n\
+        $(document).on(\"click\", \"#delcal\", function(){\n\
+            var str = $(this).val();\n\
+            $.get( \"calib.php\" , { del: str });\n\
         });\n\
     </script>\n\
 </body>\n\
