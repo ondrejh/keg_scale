@@ -2,7 +2,8 @@
  * keg_scale
  * 
  * todo:
- *   eeprom: save calibration ect.
+ *   split to modules: file is way too long
+ *   interpolation: value in units
  */
 
 #include "HX711.h"
