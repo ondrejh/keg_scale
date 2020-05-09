@@ -11,7 +11,7 @@ const char *index_html PROGMEM = "\
     <script src=\"jquery-3.5.1.min.js\"></script>\n\
     <script>\n\
         function load() {\n\
-            var url = \"http://192.168.42.1/data.json\";\n\
+            var url = \"data.json\";\n\
             $.ajax({\n\
                 url: url,\n\
                 dataType: 'json',\n\
