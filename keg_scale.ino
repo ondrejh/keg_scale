@@ -2,7 +2,8 @@
  * keg_scale
  * 
  * todo:
- *   interpolation: value in units
+ *   interpolation test
+ *   keg info (name, volume, full_raw ...)
  */
 
 #include "HX711.h"
