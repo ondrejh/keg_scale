@@ -17,6 +17,7 @@ const char *index_html PROGMEM = "\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
                     $(\"#raw\").text(data.raw);\n\
+                    $(\"#units\").text(data.units);\n\
                     var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';\n\
                     var cnt = 1;\n\
                     $.each( data.calib , function(key, value) {\n\

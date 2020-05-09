@@ -12,6 +12,7 @@
                 dataType: 'json',
                 success: (function(data) {
                     $("#raw").text(data.raw);
+                    $("#units").text(data.units);
                     var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';
                     var cnt = 1;
                     $.each( data.calib , function(key, value) {
