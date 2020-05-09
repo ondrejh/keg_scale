@@ -19,3 +19,19 @@ void bubble_calib(void) {
       break;
   }
 }
+
+// interpolate with callibration
+float interpolate(int32_t raw) {
+  int len = clb_eeprom.calib.p;
+  int i;
+  for (i=1; i<(len - 1); i++) {
+    if (raw < clb_eeprom.calib.x[i])
+      break;
+  }
+  int32_t x1 = clb_eeprom.calib.x[i-1];
+  int32_t x2 = clb_eeprom.calib.x[i];
+  float y1 = clb_eeprom.calib.y[i-1];
+  float y2 = clb_eeprom.calib.y[i];
+  
+  return y1 + (y2 - y1) * (raw - x1) / (x2 - x1);
+}
