@@ -2,7 +2,6 @@
  * keg_scale
  * 
  * todo:
- *   units (primary, secondary)
  *   keg info (name, volume, full_raw ...)
  */
 

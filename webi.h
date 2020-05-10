@@ -28,7 +28,6 @@ const char *index_html PROGMEM = "\
                     $(\"#clbtab\").html(s);\n\
                     $(\"#status\").text('');\n\
                     $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
-                    //$(\"#punit\").text(data.primary_unit);\n\
                 }),\n\
                 error: (function() {\n\
                     $(\"#status\").text(' ( offline )');\n\

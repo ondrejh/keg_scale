@@ -23,7 +23,6 @@
                     $("#clbtab").html(s);
                     $("#status").text('');
                     $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });
-                    //$("#punit").text(data.primary_unit);
                 }),
                 error: (function() {
                     $("#status").text(' ( offline )');
