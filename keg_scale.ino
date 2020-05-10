@@ -35,6 +35,7 @@ const int SLED = 16;
 int32_t scale_mess[MESS];
 uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
+float scale_units = 0.0;
 
 #define EEPROM_SIZE 512
 
@@ -139,7 +140,9 @@ void loop() {
       scale_avg += scale_mess[mess_ptr++];
       mess_ptr %= MESS;
       Serial.println(scale_avg);
-      display_raw_scale();
+      scale_units = interpolate(scale_avg);
+      //display_raw_scale(stale_avg);
+      display_units(scale_units, calib.uprim);
     }
     else
       Serial.println("---");

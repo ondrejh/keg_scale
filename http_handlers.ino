@@ -17,7 +17,7 @@ void handleData() {
 
   char msg[1024];
   int p = 0;
-  p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, \"primary_unit\": \"%s\", \"secondary_unit\": \"%s\", \"ratio\": %0.3f, \"calib\": {", scale_avg, interpolate(scale_avg), calib.uprim, calib.usec, calib.us);
+  p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, \"primary_unit\": \"%s\", \"secondary_unit\": \"%s\", \"ratio\": %0.3f, \"calib\": {", scale_avg, scale_units, calib.uprim, calib.usec, calib.us);
   bool first = true;
   for (int i = 0; i < calib.p; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");

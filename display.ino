@@ -1,17 +1,36 @@
 // --- display functions ---
 
-void display_raw_scale() {
+void display_units(float val, char *unit) {
+  char buff[32];
+  int blen;
+  int tsiz;
+  sprintf(buff, "%0.1f %s", val, unit);
+  blen = strlen(buff);
+  tsiz = SCREEN_WIDTH / (blen * 6);
+  if (tsiz < 1) tsiz = 1;
+  if (tsiz > 3) tsiz = 3;
+
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE); // Draw white text
   display.cp437(true);         // Use full 256 char 'Code Page 437' font
-  
+  display.setTextSize(tsiz);
+  display.setCursor(SCREEN_WIDTH / 2 - blen * 3 * tsiz, SCREEN_HEIGHT / 2 - tsiz * 4 + 1);
+  display.write(buff);
+  display.display();  
+}
+
+void display_raw_scale(int32_t raw) {
   char buff[32];
   int blen;
-
-  display.setTextSize(2);
-  sprintf(buff, "%d", scale_avg);
+  sprintf(buff, "%d", raw);
   blen = strlen(buff);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setTextSize(2);
   display.setCursor(64 - blen*6, 12);
   display.write(buff);
   display.display();  
