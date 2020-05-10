@@ -36,18 +36,18 @@ int32_t scale_mess[MESS];
 uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
 
+#define EEPROM_SIZE 512
+
 // eeprom calibration data
 #define EEPROM_CALIB_ADDR 0
 #define CLBLEN 5
-union {
-  struct {
-    uint8_t p;
-    int32_t x[CLBLEN];
-    float y[CLBLEN];
-    uint8_t chsum;
-  } calib;
-  uint8_t d[sizeof(calib)];
-} clb_eeprom;
+typedef struct {
+  uint8_t p;
+  int32_t x[CLBLEN];
+  float y[CLBLEN];
+} calib_t;
+
+calib_t calib;
 
 #define SCALE_PERIOD 200 //ms
 
@@ -72,19 +72,13 @@ void setup() {
   digitalWrite(SLED, OFF);
 
   // init eeprom data
-  EEPROM.begin(512);
-  /*uint8_t a = EEPROM.read(0);
-  a += 1;
-  EEPROM.write(0, a);
-  EEPROM.commit();
-  Serial.print(a);*/
-  load_calib();
+  init_eeprom(EEPROM_SIZE);
+  if (eeload(EEPROM_CALIB_ADDR, &calib, sizeof(calib)) < 0)
+    set_calib_default(&calib);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))// Address 0x3C for 128x32
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
 
   // show initial display buffer contents on the screen
   display.display();

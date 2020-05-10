@@ -19,9 +19,9 @@ void handleData() {
   int p = 0;
   p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, \"calib\": {", scale_avg, interpolate(scale_avg));
   bool first = true;
-  for (int i = 0; i < clb_eeprom.calib.p; i++) {
+  for (int i = 0; i < calib.p; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");
-    p += sprintf(&msg[p], "\"%0.1f\": %d", clb_eeprom.calib.y[i], clb_eeprom.calib.x[i]);
+    p += sprintf(&msg[p], "\"%0.1f\": %d", calib.y[i], calib.x[i]);
   }
   p += sprintf(&msg[p], "}}");
 
@@ -48,20 +48,25 @@ void handleCalib() {
     }
     else {
       int i;
-      for (i=0; i<clb_eeprom.calib.p; i++) {
-        if (val == clb_eeprom.calib.y[i]) {
-          clb_eeprom.calib.x[i] = scale_avg;
+      for (i=0; i<calib.p; i++) {
+        if (val == calib.y[i]) {
+          calib.x[i] = scale_avg;
           sprintf(msg, "Value %s updated to %d", sval, scale_avg);
           break;
         }
       }
-      if (i == clb_eeprom.calib.p) {
-        if (clb_eeprom.calib.p < CLBLEN) {
-          clb_eeprom.calib.x[clb_eeprom.calib.p] = scale_avg;
-          clb_eeprom.calib.y[clb_eeprom.calib.p] = val;
-          clb_eeprom.calib.p ++;
+      if (i == calib.p) {
+        if (calib.p < CLBLEN) {
+          calib.x[calib.p] = scale_avg;
+          calib.y[calib.p] = val;
+          calib.p ++;
+
+          // bubblesort
           bubble_calib();
-          save_calib();
+
+          // save to eeprom
+          eesave(EEPROM_CALIB_ADDR, &calib, sizeof(calib));
+
           sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
         }
         else {
@@ -78,13 +83,15 @@ void handleCalib() {
       sprintf(msg, "Error: input arg '%s' can't be converted to int", sval); 
     }
     else {
-      if ((val > 0) && (val <= clb_eeprom.calib.p) && (clb_eeprom.calib.p > 2)) {
+      if ((val > 0) && (val <= calib.p) && (calib.p > 2)) {
         for (int i=val - 1; i < (CLBLEN - 1); i++) {
-          clb_eeprom.calib.x[i] = clb_eeprom.calib.x[i + 1];
-          clb_eeprom.calib.y[i] = clb_eeprom.calib.y[i + 1];
+          calib.x[i] = calib.x[i + 1];
+          calib.y[i] = calib.y[i + 1];
         }
-        clb_eeprom.calib.p --;
-        save_calib();
+        calib.p --;
+
+        // save to eeprom
+        eesave(EEPROM_CALIB_ADDR, &calib, sizeof(calib));
         
         sprintf(msg, "Value %s deleted from callibration", sval);
       }

@@ -1,32 +1,51 @@
 // --- eeprom functions ---
 
-void set_calib_default() {
-  clb_eeprom.calib.p = 2;
-  clb_eeprom.calib.x[0] = -7090000;
-  clb_eeprom.calib.x[1] = -7350000;
-  clb_eeprom.calib.y[0] = 0.0;
-  clb_eeprom.calib.y[1] = 0.5;  
+// TODO: replace checksum with kinda CRC
+
+// init
+void init_eeprom(uint32_t siz) {
+  EEPROM.begin(siz);
 }
 
-void save_calib() {
-  uint32_t adr = EEPROM_CALIB_ADDR;
-  uint8_t chsum = 0;
-  for (int i=0; i<(sizeof(clb_eeprom.d)-1); i++) {
-    EEPROM.write(adr ++, clb_eeprom.d[i]);
-    chsum += clb_eeprom.d[i];
+// save object to eeprom (with checksum)
+int eesave(uint32_t adr, void *obj, uint32_t siz) {
+  int loc = siz + 1;
+  uint8_t *o;
+  o = (uint8_t*) obj;
+  if ((adr + loc) < EEPROM_SIZE) {
+    uint8_t chsum = 0;
+    uint32_t a = adr;
+    for (int i = 0; i < siz; i++) {
+      uint8_t b = *o++;
+      EEPROM.write(a++, b);
+      chsum += b;
+    }
+    chsum = 0x00 - chsum;
+    EEPROM.write( a, chsum );
+    EEPROM.commit();
   }
-  chsum = 0x00 - chsum;
-  EEPROM.write(adr, chsum);
-  EEPROM.commit();
+  else
+    return -1; // not enough eeprom space
+  return siz; // ok
 }
 
-void load_calib() {
-  uint32_t adr = EEPROM_CALIB_ADDR;
-  uint8_t chsum = 0;
-  for (int i=0; i<sizeof(clb_eeprom.d); i++) {
-    clb_eeprom.d[i] = EEPROM.read(adr + i);
-    chsum += clb_eeprom.d[i];
+// load object from eeprom (with checksum)
+int eeload(uint32_t adr, void *obj, uint32_t siz) {
+  int loc = siz + 1;
+  uint8_t *o;
+  o = (uint8_t*) obj;
+  if ((adr + loc) < EEPROM_SIZE) {
+    uint8_t chsum = 0;
+    uint32_t a = adr;
+    for (int i = 0; i < loc; i++)
+      chsum += EEPROM.read( a++ );
+    if (chsum != 0)
+      return -2; // incorrect chsum
+    a = adr;
+    for (int i = 0; i < siz; i++)
+      *o++ = EEPROM.read( a++ );
   }
-  if ((chsum!=0) || (clb_eeprom.calib.p < 2) || (clb_eeprom.calib.p >= CLBLEN))
-    set_calib_default();
+  else 
+    return -1; // not enough eepro space
+  return siz; // ok
 }
