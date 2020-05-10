@@ -2,7 +2,7 @@
  * keg_scale
  * 
  * todo:
- *   interpolation test
+ *   units (primary, secondary)
  *   keg info (name, volume, full_raw ...)
  */
 
@@ -38,13 +38,17 @@ int32_t scale_avg = 0;
 
 #define EEPROM_SIZE 512
 
-// eeprom calibration data
+// calibration data
 #define EEPROM_CALIB_ADDR 0
+#define UNIT_STR_MAX 8
 #define CLBLEN 5
 typedef struct {
-  uint8_t p;
-  int32_t x[CLBLEN];
-  float y[CLBLEN];
+  uint8_t p; // number of calb point used
+  int32_t x[CLBLEN]; // calibration points x (raw)
+  float y[CLBLEN]; // calibration points y (primary unit)
+  float us; // secondary units = primary units * us
+  char uprim[UNIT_STR_MAX + 1]; // primary unit name
+  char usec[UNIT_STR_MAX + 1]; // secondary unit name
 } calib_t;
 
 calib_t calib;
