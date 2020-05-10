@@ -18,7 +18,7 @@ const char *index_html PROGMEM = "\
                 success: (function(data) {\n\
                     $(\"#raw\").text(data.raw);\n\
                     $(\"#units\").text(data.units);\n\
-                    var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';\n\
+                    var s = '<tr><th><span class=\"punit\">units</span></th><th>raw value</th><th></th></tr>';\n\
                     var cnt = 1;\n\
                     $.each( data.calib , function(key, value) {\n\
                         s += '<tr><td>' + key + '</td><td>' + value +\n\
@@ -27,6 +27,8 @@ const char *index_html PROGMEM = "\
                     });\n\
                     $(\"#clbtab\").html(s);\n\
                     $(\"#status\").text('');\n\
+                    $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    //$(\"#punit\").text(data.primary_unit);\n\
                 }),\n\
                 error: (function() {\n\
                     $(\"#status\").text(' ( offline )');\n\
@@ -42,8 +44,8 @@ const char *index_html PROGMEM = "\
 <body onload=\"load();\">\n\
     <h1>Kegator<span id='status'></span></h1>\n\
     <p>Raw data: <span id='raw'>---</span></p>\n\
-    <p>Measurement: <span id='units'>---</span> units</p>\n\
-    <p>Callibration: <input type='number' id='calib' step='0.1'> units <input type='button' id='setcal' value='Set'></p>\n\
+    <p>Measurement: <span id='units'>---</span> <span class='punit'>units</span></p>\n\
+    <p>Callibration: <input type='number' id='calib' step='0.1'> <span class='punit'>units</span> <input type='button' id='setcal' value='Set'></p>\n\
     <p id='clbtab'></p>\n\
 \n\
     <script>\n\

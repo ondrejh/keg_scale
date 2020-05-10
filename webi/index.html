@@ -13,7 +13,7 @@
                 success: (function(data) {
                     $("#raw").text(data.raw);
                     $("#units").text(data.units);
-                    var s = '<tr><th>units</th><th>raw value</th><th></th></tr>';
+                    var s = '<tr><th><span class="punit">units</span></th><th>raw value</th><th></th></tr>';
                     var cnt = 1;
                     $.each( data.calib , function(key, value) {
                         s += '<tr><td>' + key + '</td><td>' + value +
@@ -21,7 +21,9 @@
                         cnt += 1;
                     });
                     $("#clbtab").html(s);
-                    $("#status").text('');                    
+                    $("#status").text('');
+                    $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });
+                    //$("#punit").text(data.primary_unit);
                 }),
                 error: (function() {
                     $("#status").text(' ( offline )');
@@ -37,8 +39,8 @@
 <body onload="load();">
     <h1>Kegator<span id='status'></span></h1>
     <p>Raw data: <span id='raw'>---</span></p>
-    <p>Measurement: <span id='units'>---</span> units</p>
-    <p>Callibration: <input type='number' id='calib' step='0.1'> units <input type='button' id='setcal' value='Set'></p>
+    <p>Measurement: <span id='units'>---</span> <span class='punit'>units</span></p>
+    <p>Callibration: <input type='number' id='calib' step='0.1'> <span class='punit'>units</span> <input type='button' id='setcal' value='Set'></p>
     <p id='clbtab'></p>
     
     <script>
