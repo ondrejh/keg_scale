@@ -6,6 +6,12 @@ void handleRoot() {
   digitalWrite(WLED, OFF);
 }
 
+void handleCalibration() {
+  digitalWrite(WLED, ON);
+  server.send(200, "text/html", calibration_html);
+  digitalWrite(WLED, OFF);
+}
+
 void handleJquery() {
   digitalWrite(WLED, ON);
   server.send(200, "application/javascript", jquery_bin);

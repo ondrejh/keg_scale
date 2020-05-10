@@ -61,6 +61,72 @@ const char *index_html PROGMEM = "\
 </html>\n\
 ";
 
+const char *calibration_name PROGMEM = "/calibration.html";
+const char *calibration_html PROGMEM = "\
+<!DOCTYPE html>\n\
+<html lang='cz'>\n\
+<head>\n\
+    <meta charset='utf-8'>\n\
+    <title>Kegator (Kalibrace)</title>\n\
+    <script src=\"jquery-3.5.1.min.js\"></script>\n\
+    <script>\n\
+        function load() {\n\
+            var url = \"data.json\";\n\
+            $.ajax({\n\
+                url: url,\n\
+                dataType: 'json',\n\
+                success: (function(data) {\n\
+                    var s = '<tr><th>Senzor</th><th>Měření [' + data.primary_unit + ']</th></tr>';\n\
+                    var cnt = 1;\n\
+                    $.each( data.calib , function(key, value) {\n\
+                        s += '<tr><td>' + value + '</td><td>' + key + '</td><td><button id=\"delcal\" value=\"' + cnt + '\">Smaž</button></td></tr>';\n\
+                        cnt += 1;\n\
+                    });\n\
+                    $(\"#clbtab\").html(s);\n\
+                    $(\"#status\").text('');\n\
+                    $(\"#clbin\").prop(\"placeholder\", data.units);\n\
+                    $(\"#units\").text(data.units);\n\
+                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    $('.raw').each(function(index, obj) { $(this).text(data.raw); });\n\
+                }),\n\
+                error: (function() {\n\
+                    $(\"#status\").text(' ( offline )');\n\
+                }),\n\
+                complete: (function() {\n\
+                    setTimeout(function() { load(); }, 500);\n\
+                }),\n\
+                timeout: 3000\n\
+            });\n\
+        }\n\
+    </script>\n\
+</head>\n\
+\n\
+<body onload=\"load();\">\n\
+    <article>\n\
+        <h1>Kalibrace<span id='status'></span></h1>\n\
+        <p><span class='raw'>---</span><input id='clbin' type='number' step='0.1' placeholder='10.0'/><span class='uprim'></span><button id='setcal'>Nastav</button></p>\n\
+        <h2>Kalibrační tabulka</h2>\n\
+        <table id='clbtab'>\n\
+        </table>\n\
+        <h2>Měření</h2>\n\
+        <p><span id='units'>---</span> <span class='uprim'></span><p>\n\
+        <p><span class='raw'>---</span></p>\n\
+    </article>\n\
+\n\
+    <script>\n\
+        $( \"#setcal\" ).click(function() {\n\
+            var str = $(\"#clbin\").val();\n\
+            $.get( \"calib.php\" , { add: str });\n\
+        });\n\
+        $(document).on(\"click\", \"#delcal\", function(){\n\
+            var str = $(this).val();\n\
+            $.get( \"calib.php\" , { del: str });\n\
+        });\n\
+    </script>\n\
+</body>\n\
+</html>\n\
+";
+
 #define JQUERY_LEN 89477
 const char *jquery_name PROGMEM = "/jquery-3.5.1.min.js";
 const char jquery_bin[JQUERY_LEN] PROGMEM = {

@@ -3,6 +3,7 @@
  * 
  * todo:
  *   keg info (name, volume, full_raw ...)
+ *   calibration: input raw (option)
  */
 
 #include "HX711.h"
@@ -108,6 +109,7 @@ void setup() {
 
   server.on("/", handleRoot);
   server.on(index_name, handleRoot);
+  server.on(calibration_name, handleCalibration);
   server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
   server.on("/calib.php", HTTP_GET, handleCalib);

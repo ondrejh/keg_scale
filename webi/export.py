@@ -50,6 +50,8 @@ with open('../webi.h', 'w') as fout:
     fout.write('#ifndef __WEBI_H__\n#define __WEBI_H__\n\n')
     print('  Embed html file index.h')
     fout.write(import_html('index.html'))
+    print('  Embed html file calibration.html')
+    fout.write(import_html('calibration.html'))
     print('  Embed binary file jquery-3.5.1.min.js')
     fout.write(import_bin('jquery-3.5.1.min.js'))
     fout.write('#endif __WEBI_H__\n')

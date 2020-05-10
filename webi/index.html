@@ -11,36 +11,24 @@
                 url: url,
                 dataType: 'json',
                 success: (function(data) {
-                    $("#raw").text(data.raw);
                     $("#units").text(data.units);
-                    var s = '<tr><th><span class="punit">units</span></th><th>raw value</th><th></th></tr>';
-                    var cnt = 1;
-                    $.each( data.calib , function(key, value) {
-                        s += '<tr><td>' + key + '</td><td>' + value +
-                            '</td><td><button id="delcal" value="' + cnt + '">Delete</button></td></tr>';
-                        cnt += 1;
-                    });
-                    $("#clbtab").html(s);
                     $("#status").text('');
-                    $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });
+                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
                 }),
                 error: (function() {
                     $("#status").text(' ( offline )');
                 }),
                 complete: (function() {
-                    setTimeout(function() { load(); }, 500); // next load in .5s
+                    setTimeout(function() { load(); }, 500);
                 }),
-                timeout: 3000 //3s timeout to error
+                timeout: 3000
             });
         }
     </script>
 </head>
 <body onload="load();">
     <h1>Kegator<span id='status'></span></h1>
-    <p>Raw data: <span id='raw'>---</span></p>
-    <p>Measurement: <span id='units'>---</span> <span class='punit'>units</span></p>
-    <p>Callibration: <input type='number' id='calib' step='0.1'> <span class='punit'>units</span> <input type='button' id='setcal' value='Set'></p>
-    <p id='clbtab'></p>
+    <p>Measurement: <span id='units'>---</span> <span class='uprim'>units</span></p>
     
     <script>
         $( "#setcal" ).click(function() {
