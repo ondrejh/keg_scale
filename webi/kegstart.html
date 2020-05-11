@@ -2,7 +2,7 @@
 <html lang='cz'>
 <head>
     <meta charset='utf-8'>
-    <title>scale</title>
+    <title>Kegator - nový sud</title>
     <script src="jquery-3.5.1.min.js"></script>
     <script>
         var keg = false;
@@ -15,6 +15,7 @@
                     $("#units").text(data.units);
                     $("#status").text('');
                     $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
+                    $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });
                     if ('keg' in data) {
                         keg=true;
                     } else {
@@ -34,19 +35,17 @@
     </script>
 </head>
 <body onload="load();">
-    <h1>Kegator<span id='status'></span></h1>
+    <h1>Kegator - nový sud <span id='status'></span></h1>
     <p>Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
-    <div class='keg'>
-        <h2 id='keg_name'></h2>
-        <p class='keg'>
-            V sudu zbývá <span id='keg_left'></span><span class='usec'></span> z celkem <span id='keg_volume'></span><span class='usec'></span><br />
-        </p>
-    </div>
-    <button id='begin'>Nový sud</button>
-    <button id='calibrate'>Kalibrovat</button>
+    <form>
+        Budeme mu říkat <input id=name/><br />
+        Jeho obsah je <input type='number' id='keg_volume'/> <span class='usec'></span><br />
+        <button id='dobegin'>Narazit teď</button>
+        <button id='doend'>Odrazit a ukončit</button>
+    </form>
 
     <script>
-        $( "#begin" ).click(function() {
+        $( "#dobegin" ).click(function() {
             if (keg) {
                 if (confirm('Skutečně chceš narazit nový sud?')) {
                     alert('Narážíme sud ... hurá');
