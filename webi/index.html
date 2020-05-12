@@ -2,7 +2,8 @@
 <html lang='cz'>
 <head>
     <meta charset='utf-8'>
-    <title>scale</title>
+    <title>Kegator</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
     <script src="jquery-3.5.1.min.js"></script>
     <script>
         var keg = false;
@@ -48,18 +49,20 @@
     <script>
         $( "#begin" ).click(function() {
             if (keg) {
-                if (confirm('Skutečně chceš narazit nový sud?')) {
-                    alert('Narážíme sud ... hurá');
-                } else {
+                if (confirm('Skutečně chceš narazit nový sud?'))
+                    window.location.href = 'kegstart.html';
+                else
                     alert('Tak nic no ...');
-                }
-            } else {
-                alert('Narážíme sud ... hurá');                
-            }
+            } else
+                window.location.href = 'kegstart.html';
         });        
         $( "#calibrate" ).click(function() {
-            if (keg)
-                alert('Nelze kalibrovat, protože je naraženo!');
+            if (keg) {
+                if (confirm('Opravdu chceš kalibrovat když je naraženo?'))
+                    window.location.href = 'calibration.html';
+                else
+                    alert('Nelze kalibrovat, protože je naraženo!');
+            }
             else
                 window.location.href = 'calibration.html';
         });        

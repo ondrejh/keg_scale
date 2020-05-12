@@ -47,10 +47,13 @@
         <h2>Měření</h2>
         <p><span id='units'>---</span> <span class='uprim'></span><p>
         <p><span class='raw'>---</span></p>
-        <p><a href='index.html'>Zpět</a></p>
+        <p><button id='done'>Hotovo</button></p>
     </article>
 
     <script>
+        $( "#done").click(function() {
+           window.location.href = 'index.html';
+        });
         $( "#setcal" ).click(function() {
             var str = $("#clbin").val();
             $.get( "calib.php" , { add: str });
