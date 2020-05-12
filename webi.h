@@ -7,54 +7,69 @@ const char *index_html PROGMEM = "\
 <html lang='cz'>\n\
 <head>\n\
     <meta charset='utf-8'>\n\
-    <title>scale</title>\n\
+    <title>Kegator</title>\n\
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n\
     <script src=\"jquery-3.5.1.min.js\"></script>\n\
     <script>\n\
+        var keg = false;\n\
         function load() {\n\
             var url = \"data.json\";\n\
             $.ajax({\n\
                 url: url,\n\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
-                    $(\"#raw\").text(data.raw);\n\
                     $(\"#units\").text(data.units);\n\
-                    var s = '<tr><th><span class=\"punit\">units</span></th><th>raw value</th><th></th></tr>';\n\
-                    var cnt = 1;\n\
-                    $.each( data.calib , function(key, value) {\n\
-                        s += '<tr><td>' + key + '</td><td>' + value +\n\
-                            '</td><td><button id=\"delcal\" value=\"' + cnt + '\">Delete</button></td></tr>';\n\
-                        cnt += 1;\n\
-                    });\n\
-                    $(\"#clbtab\").html(s);\n\
                     $(\"#status\").text('');\n\
-                    $('.punit').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    if ('keg' in data) {\n\
+                        keg=true;\n\
+                    } else {\n\
+                        keg=false;\n\
+                        $(\".keg\").each(function(index, obj) { $(this).hide(); });\n\
+                    }\n\
                 }),\n\
                 error: (function() {\n\
                     $(\"#status\").text(' ( offline )');\n\
                 }),\n\
                 complete: (function() {\n\
-                    setTimeout(function() { load(); }, 500); // next load in .5s\n\
+                    setTimeout(function() { load(); }, 500);\n\
                 }),\n\
-                timeout: 3000 //3s timeout to error\n\
+                timeout: 3000\n\
             });\n\
         }\n\
     </script>\n\
 </head>\n\
 <body onload=\"load();\">\n\
     <h1>Kegator<span id='status'></span></h1>\n\
-    <p>Raw data: <span id='raw'>---</span></p>\n\
-    <p>Measurement: <span id='units'>---</span> <span class='punit'>units</span></p>\n\
-    <p>Callibration: <input type='number' id='calib' step='0.1'> <span class='punit'>units</span> <input type='button' id='setcal' value='Set'></p>\n\
-    <p id='clbtab'></p>\n\
+    <p>Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>\n\
+    <div class='keg'>\n\
+        <h2 id='keg_name'></h2>\n\
+        <p class='keg'>\n\
+            V sudu zbývá <span id='keg_left'></span><span class='usec'></span> z celkem <span id='keg_volume'></span><span class='usec'></span><br />\n\
+        </p>\n\
+    </div>\n\
+    <button id='begin'>Nový sud</button>\n\
+    <button id='calibrate'>Kalibrovat</button>\n\
 \n\
     <script>\n\
-        $( \"#setcal\" ).click(function() {\n\
-            var str = $(\"#calib\").val();\n\
-            $.get( \"calib.php\" , { add: str });\n\
+        $( \"#begin\" ).click(function() {\n\
+            if (keg) {\n\
+                if (confirm('Skutečně chceš narazit nový sud?'))\n\
+                    window.location.href = 'kegstart.html';\n\
+                else\n\
+                    alert('Tak nic no ...');\n\
+            } else\n\
+                window.location.href = 'kegstart.html';\n\
         });\n\
-        $(document).on(\"click\", \"#delcal\", function(){\n\
-            var str = $(this).val();\n\
-            $.get( \"calib.php\" , { del: str });\n\
+        $( \"#calibrate\" ).click(function() {\n\
+            if (keg) {\n\
+                if (confirm('Opravdu chceš kalibrovat když je naraženo?'))\n\
+                    window.location.href = 'calibration.html';\n\
+                else\n\
+                    alert('Nelze kalibrovat, protože je naraženo!');\n\
+            }\n\
+            else\n\
+                window.location.href = 'calibration.html';\n\
         });\n\
     </script>\n\
 </body>\n\
@@ -68,6 +83,7 @@ const char *calibration_html PROGMEM = "\
 <head>\n\
     <meta charset='utf-8'>\n\
     <title>Kegator (Kalibrace)</title>\n\
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n\
     <script src=\"jquery-3.5.1.min.js\"></script>\n\
     <script>\n\
         function load() {\n\
@@ -111,9 +127,13 @@ const char *calibration_html PROGMEM = "\
         <h2>Měření</h2>\n\
         <p><span id='units'>---</span> <span class='uprim'></span><p>\n\
         <p><span class='raw'>---</span></p>\n\
+        <p><button id='done'>Hotovo</button></p>\n\
     </article>\n\
 \n\
     <script>\n\
+        $( \"#done\").click(function() {\n\
+           window.location.href = 'index.html';\n\
+        });\n\
         $( \"#setcal\" ).click(function() {\n\
             var str = $(\"#clbin\").val();\n\
             $.get( \"calib.php\" , { add: str });\n\
@@ -125,6 +145,94 @@ const char *calibration_html PROGMEM = "\
     </script>\n\
 </body>\n\
 </html>\n\
+";
+
+const char *kegstart_name PROGMEM = "/kegstart.html";
+const char *kegstart_html PROGMEM = "\
+<!DOCTYPE html>\n\
+<html lang='cz'>\n\
+<head>\n\
+    <meta charset='utf-8'>\n\
+    <title>Kegator - nový sud</title>\n\
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n\
+    <script src=\"jquery-3.5.1.min.js\"></script>\n\
+    <script>\n\
+        var keg = false;\n\
+        var secunit = '';\n\
+        function load() {\n\
+            var url = \"data.json\";\n\
+            $.ajax({\n\
+                url: url,\n\
+                dataType: 'json',\n\
+                success: (function(data) {\n\
+                    $(\"#units\").text(data.units);\n\
+                    $(\"#status\").text('');\n\
+                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });\n\
+                    secunit = data.secondary_unit;\n\
+                    if ('keg' in data) {\n\
+                        keg=true;\n\
+                        $('#finish_keg').hide(); // tohle nefunguje\n\
+                    } else {\n\
+                        keg=false;\n\
+                        $('#finish_keg').show(); // ani tohle ne\n\
+                    }\n\
+                }),\n\
+                error: (function() {\n\
+                    $(\"#status\").text(' ( offline )');\n\
+                }),\n\
+                complete: (function() {\n\
+                    setTimeout(function() { load(); }, 500);\n\
+                }),\n\
+                timeout: 3000\n\
+            });\n\
+        }\n\
+    </script>\n\
+</head>\n\
+<body onload=\"load();\">\n\
+    <h1>Kegator - nový sud <span id='status'></span></h1>\n\
+    <p>Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>\n\
+    <p>\n\
+        Budeme mu říkat <input id='keg_name' placeholder='Můj soudek 12&deg'/><br />\n\
+        Jeho obsah je <input type='number' id='keg_volume'/> <span class='usec'></span><br />\n\
+        <button id='begin_keg'>Narazit teď</button>\n\
+        <button id='finish_keg'>Odrazit a ukončit</button>\n\
+        <button id='cancel'>Zrušit</button>\n\
+    </p>\n\
+\n\
+    <script>\n\
+        $( \"#begin_keg\" ).click(function() {\n\
+            var name = $('#keg_name').val();\n\
+            if ((name == undefined) || (name == \"\")) {\n\
+                alert('Tohle nejde. Sud musí mít přece nějaké jméno.');\n\
+                return;\n\
+            }\n\
+            var vol = $('#keg_volume').val();\n\
+            var intvol = Number(vol, 10);\n\
+            console.log(intvol);\n\
+            if (intvol <= 0) {\n\
+                alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');\n\
+                return;\n\
+            }\n\
+            alert('Narážíme sud \"' + name + '\", je v něm ' + vol + ' ' + secunit);\n\
+            window.location.href = 'index.html';\n\
+        });\n\
+\n\
+        $( \"#finish_keg\" ).click(function() {\n\
+            alert('Je po něm :-(');\n\
+            window.location.href = 'index.html';\n\
+        });\n\
+\n\
+        $( \"#cancel\" ).click(function() {\n\
+            window.location.href = 'index.html';\n\
+        });\n\
+    </script>\n\
+</body>\n\
+</html>\n\
+";
+
+const char *style_name PROGMEM = "/style.css";
+const char *style_html PROGMEM = "\
 ";
 
 #define JQUERY_LEN 89477

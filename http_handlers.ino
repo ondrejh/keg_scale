@@ -12,6 +12,18 @@ void handleCalibration() {
   digitalWrite(WLED, OFF);
 }
 
+void handleKegstart() {
+  digitalWrite(WLED, ON);
+  server.send(200, "text/html", kegstart_html);
+  digitalWrite(WLED, OFF);  
+}
+
+void handleStyle() {
+  digitalWrite(WLED, ON);
+  server.send(200, "text/html", style_html);
+  digitalWrite(WLED, OFF);
+}
+
 void handleJquery() {
   digitalWrite(WLED, ON);
   server.send(200, "application/javascript", jquery_bin);
@@ -25,7 +37,7 @@ void handleData() {
   int p = 0;
   p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
   if (temperature_valid)
-    p += sprintf(&msg[p], "\"temp\": %0.1f, ", temperature);
+    p += sprintf(&msg[p], "\"temp\": %0.1f, \"traw\": %d, ", temperature, raw_temp);
   p += sprintf(&msg[p], "\"primary_unit\": \"%s\", \"secondary_unit\": \"%s\", \"ratio\": %0.3f, \"calib\": {", calib.uprim, calib.usec, calib.us);
   bool first = true;
   for (int i = 0; i < calib.p; i++) {
@@ -116,6 +128,27 @@ void handleCalib() {
   server.send(200, "text/html", msg);
 
   
+  digitalWrite(WLED, OFF);
+}
+
+void handleKeg() {
+  digitalWrite(WLED, ON);
+  char msg[256];
+  char keg_name[32];
+  char keg_vol[16];
+  float keg_vol_float;
+  if (server.hasArg("keg") && server.hasArg("vol")) {
+    server.arg("keg").toCharArray(keg_name, 32);
+    server.arg("vol").toCharArray(keg_vol, 16);
+    if (sscanf(keg_vol, "%f", &keg_vol_float) != 1) {
+      sprintf(msg, "Error: incorrect volume input");
+    }
+    else
+      sprintf(msg, "New keg %s volume %0.0f", keg_name, keg_vol_float);
+  }
+  else
+    sprintf(msg, "Input arguments missing");
+  server.send(200, "text/html", msg);
   digitalWrite(WLED, OFF);
 }
 

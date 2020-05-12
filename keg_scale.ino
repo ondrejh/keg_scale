@@ -25,6 +25,7 @@
 OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
 
 float temperature;
+int16_t raw_temp = 0;
 bool temperature_valid = false;
 
 // HX711 circuit wiring
@@ -120,9 +121,12 @@ void setup() {
   server.on("/", handleRoot);
   server.on(index_name, handleRoot);
   server.on(calibration_name, handleCalibration);
+  server.on(kegstart_name, handleKegstart);
+  server.on(style_name, handleStyle);
   server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
   server.on("/calib.php", HTTP_GET, handleCalib);
+  server.on("/keg.php", HTTP_GET, handleKeg);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -201,6 +205,7 @@ void loop() {
             else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
             temperature = (float)raw / 16.0;
             temperature_valid = true;
+            raw_temp = raw;
             Serial.println(temperature);
           }
         } else {
