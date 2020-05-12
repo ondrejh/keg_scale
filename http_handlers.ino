@@ -23,7 +23,10 @@ void handleData() {
 
   char msg[1024];
   int p = 0;
-  p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, \"primary_unit\": \"%s\", \"secondary_unit\": \"%s\", \"ratio\": %0.3f, \"calib\": {", scale_avg, scale_units, calib.uprim, calib.usec, calib.us);
+  p = sprintf(msg, "{\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
+  if (temperature_valid)
+    p += sprintf(&msg[p], "\"temp\": %0.1f, ", temperature);
+  p += sprintf(&msg[p], "\"primary_unit\": \"%s\", \"secondary_unit\": \"%s\", \"ratio\": %0.3f, \"calib\": {", calib.uprim, calib.usec, calib.us);
   bool first = true;
   for (int i = 0; i < calib.p; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");

@@ -18,7 +18,14 @@
 
 #include <EEPROM.h>
 
+#include <OneWire.h>
+
 #include "webi.h"
+
+OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
+
+float temperature;
+bool temperature_valid = false;
 
 // HX711 circuit wiring
 const int LOADCELL_DOUT_PIN = D5;
@@ -75,6 +82,9 @@ void setup() {
   digitalWrite(WLED, OFF);
   pinMode(SLED, OUTPUT);
   digitalWrite(SLED, OFF);
+
+  pinMode(D7, OUTPUT);
+  digitalWrite(D7, HIGH);
 
   // init eeprom data
   init_eeprom(EEPROM_SIZE);
@@ -151,6 +161,69 @@ void loop() {
     digitalWrite(SLED, OFF);
   }
 
+  // temperature
+  static uint32_t temp_tim = 0;
+  static int temp_state = 0;
+  switch (temp_state) {
+  case 0:
+    temp_tim = millis();
+    ds.reset();
+    ds.skip();
+    ds.write(0x44,1);
+    temp_state ++;
+    break;
+  case 1:
+    if ((millis() - temp_tim) >= 1000) {
+      byte present = ds.reset();
+      byte data[9];
+      ds.skip();    
+      ds.write(0xBE); // Read Scratchpad
+
+      if (!present) {
+        temp_state = 3;
+        break;
+      }
+      else {
+        for ( int i = 0; i < 9; i++)
+          data[i] = ds.read();
+        if (OneWire::crc8( data, 9) == 0) {
+          static bool first = true;
+          if (first) {
+            temp_state = 3;
+            first = false;
+            break;
+          }
+          else {
+            int16_t raw = (data[1] << 8) | data[0];
+            byte cfg = (data[4] & 0x60);
+            if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+            else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+            else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+            temperature = (float)raw / 16.0;
+            temperature_valid = true;
+            Serial.println(temperature);
+          }
+        } else {
+          temp_state = 3;
+          break;
+        }
+      }
+      temp_state++;
+    }
+    break;
+  case 2:
+    if ((millis() - temp_tim) >= 30000) {
+      temp_state = 0;
+    }
+    break;
+  case 3:
+    if ((millis() - temp_tim) >= 1200) {
+      temp_state = 0;
+    }
+    break;
+  }
+
   // display
+
   
 }
