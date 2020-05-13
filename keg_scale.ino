@@ -2,7 +2,8 @@
  * keg_scale
  * 
  * todo:
- *   keg info (name, volume, full_raw ...)
+ *   keg: display ( if needed )
+ *   webi: show keg name
  *   calibration: input raw (option)
  */
 
@@ -62,6 +63,20 @@ typedef struct {
 
 calib_t calib;
 
+#define EEPROM_KEG_ADDR (2+sizeof(calib_t))
+#define KEG_LABEL_MAX 32
+#define KEG (keg.keg)
+typedef struct {
+  bool keg;
+  char label[KEG_LABEL_MAX + 1];
+  float volume;
+  int32_t fullraw;
+} keg_t;
+
+keg_t keg;
+float keg_left;
+float keg_full;
+
 #define SCALE_PERIOD 200 //ms
 
 // display
@@ -91,6 +106,14 @@ void setup() {
   init_eeprom(EEPROM_SIZE);
   if (eeload(EEPROM_CALIB_ADDR, &calib, sizeof(calib)) < 0)
     set_calib_default(&calib);
+  if (eeload(EEPROM_KEG_ADDR, &keg, sizeof(keg)) < 0)
+    keg.keg = false;
+
+  // if keg initialize live data
+  if (KEG) {
+    keg_full = interpolate(keg.fullraw);
+    keg_left = keg.volume;
+  }
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))// Address 0x3C for 128x32
@@ -114,10 +137,10 @@ void setup() {
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   pinMode(LOADCELL_DOUT_PIN, INPUT);
 
-  if (MDNS.begin("esp8266")) {
+  if (MDNS.begin("esp8266"))
     Serial.println("MDNS responder started");
-  }
 
+  // mdns setup
   server.on("/", handleRoot);
   server.on(index_name, handleRoot);
   server.on(calibration_name, handleCalibration);
@@ -156,6 +179,7 @@ void loop() {
       mess_ptr %= MESS;
       Serial.println(scale_avg);
       scale_units = interpolate(scale_avg);
+      keg_left = keg.volume - (keg_full - scale_units) / calib.us;
       //display_raw_scale(stale_avg);
       display_units(scale_units, calib.uprim);
     }

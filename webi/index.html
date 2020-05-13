@@ -16,8 +16,12 @@
                     $("#units").text(data.units);
                     $("#status").text('');
                     $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
+                    $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });
                     if ('keg' in data) {
                         keg=true;
+                        $('#keg_left').text(data.keg.left);
+                        $('#keg_volume').text(data.keg.volume);
+                        $(".keg").each(function(index, obj) { $(this).show(); });
                     } else {
                         keg=false;
                         $(".keg").each(function(index, obj) { $(this).hide(); });

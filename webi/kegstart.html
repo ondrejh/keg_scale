@@ -63,12 +63,15 @@
                 alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
                 return;
             }
+            $.get( "keg.php" , { keg: name, vol: vol });
             alert('Narážíme sud "' + name + '", je v něm ' + vol + ' ' + secunit);
+
             window.location.href = 'index.html';
         });        
 
         $( "#finish_keg" ).click(function() {
             alert('Je po něm :-(');
+            $.get( "keg.php" , { del: 'yes' });
             window.location.href = 'index.html';
         });        
 

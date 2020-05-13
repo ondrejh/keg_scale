@@ -3,13 +3,14 @@
 // set calibration defaults (if calibration missing)
 void set_calib_default(calib_t *cal) {
   cal->p = 2;
-  cal->x[0] = -7090000;
-  cal->x[1] = -7350000;
-  cal->y[0] = 0.0;
-  cal->y[1] = 0.5;
+  cal->x[0] = -18689192;
+  cal->x[1] = -7110488;
+  cal->y[0] = 30.0;
+  cal->y[1] = 0.0;
   cal->us = 0.5; // 1 piv = 0.5 kg
   sprintf(cal->uprim, "kg");
   sprintf(cal->usec, "piv");
+  bubble_calib();
 }
 
 // bubblesort calibration to have x axis consistent

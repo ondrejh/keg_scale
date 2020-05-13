@@ -20,7 +20,7 @@ void handleKegstart() {
 
 void handleStyle() {
   digitalWrite(WLED, ON);
-  server.send(200, "text/html", style_html);
+  server.send(200, "text/css", style_html);
   digitalWrite(WLED, OFF);
 }
 
@@ -44,7 +44,11 @@ void handleData() {
     if (first) first = false; else p += sprintf(&msg[p], ", ");
     p += sprintf(&msg[p], "\"%0.1f\": %d", calib.y[i], calib.x[i]);
   }
-  p += sprintf(&msg[p], "}}");
+  p += sprintf(&msg[p], "}");
+  if (KEG) {
+    p += sprintf(&msg[p], ", \"keg\": {\"name\": \"%s\", \"fullraw\": %d, \"volume\": %0.1f, \"left\": %0.1f}", keg.label, keg.fullraw, keg.volume, keg_left);
+  }
+  p += sprintf(&msg[p], "}");
 
   server.sendHeader("Access-Control-Max-Age", "10000");
   server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
@@ -63,6 +67,7 @@ void handleCalib() {
   if (server.hasArg("add")) {
     char sval[16];
     server.arg("add").toCharArray(sval, 16);
+    //if (server.hasArg("val")))
     float val;
     if (sscanf(sval, "%f", &val) != 1) {
       sprintf(msg, "Error: input arg '%s' can't be converted to float", sval); 
@@ -134,17 +139,30 @@ void handleCalib() {
 void handleKeg() {
   digitalWrite(WLED, ON);
   char msg[256];
-  char keg_name[32];
-  char keg_vol[16];
+  char keg_name[KEG_LABEL_MAX + 1];
+  char keg_vol[17];
   float keg_vol_float;
   if (server.hasArg("keg") && server.hasArg("vol")) {
-    server.arg("keg").toCharArray(keg_name, 32);
+    server.arg("keg").toCharArray(keg_name, KEG_LABEL_MAX);
+    keg_name[KEG_LABEL_MAX] = '\0';
     server.arg("vol").toCharArray(keg_vol, 16);
+    keg_vol[16] = '\0';
     if (sscanf(keg_vol, "%f", &keg_vol_float) != 1) {
       sprintf(msg, "Error: incorrect volume input");
     }
-    else
+    else {
       sprintf(msg, "New keg %s volume %0.0f", keg_name, keg_vol_float);
+      strncpy(keg.label, keg_name, KEG_LABEL_MAX);
+      keg.fullraw = scale_avg;
+      keg_full = interpolate(keg.fullraw);
+      keg.volume = keg_vol_float;
+      keg_left = keg_vol_float;
+      keg.keg = true;
+    }
+  }
+  else if (server.hasArg("del") && (server.arg("del") == "yes")) {
+    sprintf(msg, "Kill keg %s", keg.label);
+    keg.keg = false;
   }
   else
     sprintf(msg, "Input arguments missing");

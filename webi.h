@@ -21,8 +21,12 @@ const char *index_html PROGMEM = "\
                     $(\"#units\").text(data.units);\n\
                     $(\"#status\").text('');\n\
                     $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
+                    $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });\n\
                     if ('keg' in data) {\n\
                         keg=true;\n\
+                        $('#keg_left').text(data.keg.left);\n\
+                        $('#keg_volume').text(data.keg.volume);\n\
+                        $(\".keg\").each(function(index, obj) { $(this).show(); });\n\
                     } else {\n\
                         keg=false;\n\
                         $(\".keg\").each(function(index, obj) { $(this).hide(); });\n\
@@ -214,12 +218,15 @@ const char *kegstart_html PROGMEM = "\
                 alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');\n\
                 return;\n\
             }\n\
+            $.get( \"keg.php\" , { keg: name, vol: vol });\n\
             alert('Narážíme sud \"' + name + '\", je v něm ' + vol + ' ' + secunit);\n\
+\n\
             window.location.href = 'index.html';\n\
         });\n\
 \n\
         $( \"#finish_keg\" ).click(function() {\n\
             alert('Je po něm :-(');\n\
+            $.get( \"keg.php\" , { del: 'yes' });\n\
             window.location.href = 'index.html';\n\
         });\n\
 \n\
