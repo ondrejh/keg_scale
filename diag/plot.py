@@ -2,14 +2,16 @@
 
 """ This will generate from csv file generated with log.py html charts and open it in browser"""
 
-import dateutil.parser
 import datetime
 import subprocess
+import os
 
 file_in = 'log.csv'
 file_out = 'log.html'
 
 browser_exec = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+if not os.path.isfile(browser_exec):
+    browser_exec = 'firefox'
 
 data = {'time': [],
         'scale_raw': [],
@@ -19,7 +21,7 @@ data = {'time': [],
 
 for line in open(file_in):
     splt = line.strip().split(';')
-    tim = dateutil.parser.parse(splt[0])
+    tim = datetime.datetime.strptime(splt[0], '%Y-%m-%dT%H:%M:%S.%f')
     s_raw = int(splt[1].strip())
     s = float(splt[2].strip())
     t = float(splt[3].strip())
