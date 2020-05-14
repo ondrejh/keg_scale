@@ -21,6 +21,7 @@
                         keg=true;
                         $('#keg_left').text(data.keg.left);
                         $('#keg_volume').text(data.keg.volume);
+						$('#keg_label').text(data.keg.name);
                         $(".keg").each(function(index, obj) { $(this).show(); });
                     } else {
                         keg=false;
@@ -44,6 +45,7 @@
     <div class='keg'>
         <h2 id='keg_name'></h2>
         <p class='keg'>
+			<span id='keg_label'></span><br />
             V sudu zbývá <span id='keg_left'></span><span class='usec'></span> z celkem <span id='keg_volume'></span><span class='usec'></span><br />
         </p>
     </div>
