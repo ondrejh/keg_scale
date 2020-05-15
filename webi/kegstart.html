@@ -2,8 +2,17 @@
 <html lang='cz'>
 <head>
     <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Kegator - nový sud</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="sass/style.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <meta name="msapplication-TileColor" content="#feda3e">
+    <meta name="theme-color" content="#feda3e">
     <script src="jquery-3.5.1.min.js"></script>
     <script>
         var keg = false;
@@ -39,15 +48,28 @@
     </script>
 </head>
 <body onload="load();">
-    <h1>Kegator - nový sud <span id='status'></span></h1>
-    <p>Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
-    <p>
-        Budeme mu říkat <input id='keg_name' placeholder='Můj soudek 12&deg'/><br />
-        Jeho obsah je <input type='number' id='keg_volume'/> <span class='usec'></span><br />
-        <button id='begin_keg'>Narazit teď</button>
-        <button id='finish_keg'>Odrazit a ukončit</button>
-        <button id='cancel'>Zrušit</button>
-    </p>
+    <main>
+        <div class="container">
+            
+            <h1>Kegator - nový sud <span id='status'></span></h1>
+            <p class="weight">Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
+            <p class="line">
+                <label for="keg_name">Budeme mu říkat</label>
+                <input id='keg_name' class="field" placeholder='Můj soudek 12&deg'/>
+            </p>
+            <p class="lline">
+                <label for="keg_volume">Jeho obsah je</label>
+                <input type='number' class="field" id='keg_volume'/> <span class='usec'></span>
+            </p>
+            <p class="btns">
+                <button id='begin_keg' class="btn">Narazit teď</button>
+                <button id='finish_keg' class="btn">Odrazit a ukončit</button>
+                <button id='cancel' class="btn">Zrušit</button>
+            </p>
+
+        </div>
+    </main>
+    
 
     <script>
         $( "#begin_keg" ).click(function() {
