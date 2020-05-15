@@ -26,6 +26,7 @@ const char *index_html PROGMEM = "\
                         keg=true;\n\
                         $('#keg_left').text(data.keg.left);\n\
                         $('#keg_volume').text(data.keg.volume);\n\
+						$('#keg_label').text(data.keg.name);\n\
                         $(\".keg\").each(function(index, obj) { $(this).show(); });\n\
                     } else {\n\
                         keg=false;\n\
@@ -49,6 +50,7 @@ const char *index_html PROGMEM = "\
     <div class='keg'>\n\
         <h2 id='keg_name'></h2>\n\
         <p class='keg'>\n\
+			<span id='keg_label'></span><br />\n\
             V sudu zbývá <span id='keg_left'></span><span class='usec'></span> z celkem <span id='keg_volume'></span><span class='usec'></span><br />\n\
         </p>\n\
     </div>\n\
