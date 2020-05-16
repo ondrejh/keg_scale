@@ -5,7 +5,7 @@ import re
 
 def get_var_name(fname):
 
-    return fname.replace('-', '.').split('.')[0]
+    return fname.replace('-', '.').replace('/', '_').split('.')[0]
 
 
 def import_html(fname):
@@ -22,11 +22,12 @@ def import_html(fname):
     return sout
 
 
-def import_bin(fname, line_bytes=16):
+def import_bin(fname, line_bytes=16, end=b'\x00'):
 
     varname = get_var_name(fname)
     fcont = open(fname, 'rb').read()
-    fcont += b'\x00'
+    if end is not None:
+        fcont += end
     flen = len(fcont)
     sout = '#define {}_LEN {}\n'.format(varname.upper(), flen)
     sout += 'const char *{}_name PROGMEM = "/{}";\n'.format(varname, fname)
@@ -54,9 +55,13 @@ with open('../webi.h', 'w') as fout:
     fout.write(import_html('calibration.html'))
     print('  Embed html file kegstart.html')
     fout.write(import_html('kegstart.html'))
-    print('  Embed css file style.css')
-    fout.write(import_html('style.css'))
+    print('  Embed binary css file style.css')
+    fout.write(import_bin('sass/style.css'))#, end=None))
+    print('  Embed binary favicon.ico')
+    fout.write(import_bin('favicon.ico'))#, end=None))
+    print('  Embed binary img/bg.jpg')
+    fout.write(import_bin('img/bg.jpg'))#, end=None))
     print('  Embed binary file jquery-3.5.1.min.js')
-    fout.write(import_bin('jquery-3.5.1.min.js'))
+    fout.write(import_bin('jquery-3.5.1.min.js', end=None))
     fout.write('#endif __WEBI_H__\n')
     print('Done')

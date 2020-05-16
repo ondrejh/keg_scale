@@ -1,1 +1,1 @@
-cp *.html *.js *.json /var/www/html/
+cp -r sass img *.html *.js *.json /var/www/html/

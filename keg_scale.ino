@@ -145,7 +145,10 @@ void setup() {
   server.on(index_name, handleRoot);
   server.on(calibration_name, handleCalibration);
   server.on(kegstart_name, handleKegstart);
-  server.on(style_name, handleStyle);
+  server.on(sass_style_name, handleStyle);
+  server.on(favicon_name, handleFavicon);
+  server.on(img_bg_name, handleBg);
+  
   server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
   server.on("/calib.php", HTTP_GET, handleCalib);
@@ -179,9 +182,12 @@ void loop() {
       mess_ptr %= MESS;
       Serial.println(scale_avg);
       scale_units = interpolate(scale_avg);
-      keg_left = keg.volume - (keg_full - scale_units) / calib.us;
-      //display_raw_scale(stale_avg);
-      display_units(scale_units, calib.uprim);
+      if (KEG) {
+        keg_left = keg.volume - (keg_full - scale_units) / calib.us;
+        display_units(keg_left, calib.usec);
+      }
+      else
+        display_units(scale_units, calib.uprim);
     }
     else
       Serial.println("---");
