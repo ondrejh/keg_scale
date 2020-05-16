@@ -20,13 +20,25 @@ void handleKegstart() {
 
 void handleStyle() {
   digitalWrite(WLED, ON);
-  server.send(200, "text/css", style_html);
+  server.send(200, "text/css", sass_style_bin, sizeof(sass_style_bin));
+  digitalWrite(WLED, OFF);
+}
+
+void handleFavicon() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/x-icon", favicon_bin, sizeof(favicon_bin));
+  digitalWrite(WLED, OFF);
+}
+
+void handleBg() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/x-icon", img_bg_bin, sizeof(img_bg_bin));
   digitalWrite(WLED, OFF);
 }
 
 void handleJquery() {
   digitalWrite(WLED, ON);
-  server.send(200, "application/javascript", jquery_bin);
+  server.send(200, "application/javascript", jquery_bin, sizeof(jquery_bin));
   digitalWrite(WLED, OFF);
 }
 
@@ -158,11 +170,15 @@ void handleKeg() {
       keg.volume = keg_vol_float;
       keg_left = keg_vol_float;
       keg.keg = true;
+      // save to eeprom
+      eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
     }
   }
   else if (server.hasArg("del") && (server.arg("del") == "yes")) {
     sprintf(msg, "Kill keg %s", keg.label);
     keg.keg = false;
+    // save to eeprom
+    eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
   }
   else
     sprintf(msg, "Input arguments missing");
