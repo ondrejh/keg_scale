@@ -63,6 +63,7 @@
             </div>
             <p class="btns">
                 <button id='begin' class="btn">Nový sud</button>
+                <button id='wifiset' class="btn">Nastavit síť</button>
                 <button id='calibrate' class="btn">Kalibrovat</button>
             </p>
                 
@@ -89,6 +90,12 @@
             }
             else
                 window.location.href = 'calibration.html';
+        });        
+        $( "#wifiset" ).click(function() {
+			if (confirm('Opravdu chceš nastavovat wifi?'))
+				window.location.href = 'netsetup.html';
+			else
+				alert('OK. Funguje to, nesahej na to!');
         });        
     </script>
 </body>
