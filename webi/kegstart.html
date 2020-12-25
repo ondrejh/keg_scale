@@ -29,15 +29,16 @@
                     $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });
                     secunit = data.secondary_unit;
                     if ('keg' in data) {
-                        keg=true;
-                        $('#begin_keg').hide();
+                        keg=false;
+                        //$('#begin_keg').hide();
+                        $('#begin_keg').html('Odrazit a ukončit');
                         $('#keg_name_line').hide();
                         $('#keg_volume_line').hide();
-                        $('#finish_keg').show();
+                        //$('#finish_keg').show();
                     } else {
-                        keg=false;
-                        $('#finish_keg').hide();
-                        $('#begin_keg').show();
+                        keg=true;
+                        //$('#finish_keg').hide();
+                        $('#begin_keg').html('Narazit');
                         $('#keg_name_line').show();
                         $('#keg_volume_line').show();
                     }
@@ -69,7 +70,7 @@
             </p>
             <p class="btns">
                 <button id='begin_keg' class="btn">Narazit teď</button>
-                <button id='finish_keg' class="btn">Odrazit a ukončit</button>
+                <!--<button id='finish_keg' class="btn">Odrazit a ukončit</button>-->
                 <button id='cancel' class="btn">Zrušit</button>
             </p>
 
@@ -79,22 +80,29 @@
 
     <script>
         $( "#begin_keg" ).click(function() {
-            var name = $('#keg_name').val();
-            if ((name == undefined) || (name == "")) {
-                alert('Tohle nejde. Sud musí mít přece nějaké jméno.');
-                return;
-            }
-            var vol = $('#keg_volume').val();
-            var intvol = Number(vol, 10);
-            console.log(intvol);
-            if (intvol <= 0) {
-                alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
-                return;
-            }
-            $.get( "keg.php" , { keg: name, vol: vol });
-            alert('Narážíme sud "' + name + '", je v něm ' + vol + ' ' + secunit);
+			if (keg) {
+				var name = $('#keg_name').val();
+				if ((name == undefined) || (name == "")) {
+					alert('Tohle nejde. Sud musí mít přece nějaké jméno.');
+					return;
+				}
+				var vol = $('#keg_volume').val();
+				var intvol = Number(vol, 10);
+				console.log(intvol);
+				if (intvol <= 0) {
+					alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
+					return;
+				}
+				$.get( "keg.php" , { keg: name, vol: vol });
+				alert('Narážíme sud "' + name + '", je v něm ' + vol + ' ' + secunit);
 
-            window.location.href = 'index.html';
+				window.location.href = 'index.html';
+			}
+			else { // not keg
+				$.get( "keg.php" , { del: 'yes' });
+				alert('Je po něm :-(');
+				window.location.href = 'index.html';
+			}
         });        
 
         $( "#finish_keg" ).click(function() {
