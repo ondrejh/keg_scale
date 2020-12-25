@@ -63,6 +63,17 @@ function interpol( $cal, $value, $unit ) {
 	return $a * ($value - $c[$unit][$i]) + $c[$k][$i];
 }
 
+function print_calib( $cal ) {
+	$str = '"calib": {';
+	$l = sizeof($cal['units']);
+	for ( $i=0; $i<$l; $i++ ) {
+		if ($i!=0) $str .= ', ';
+		$str .= '"'. sprintf('%0.01f', $cal['units'][$i]). '": '. $cal['raw'][$i];
+	}
+	$str .= '}';
+	return $str;
+}
+
 if (( $keg != null ) && ( $vol != null )) {
 	$v = floatval($vol);
 	if ($v == 0) {
@@ -74,14 +85,17 @@ if (( $keg != null ) && ( $vol != null )) {
 		$units = $vol * 0.54 + 5.5;
 		$raw = interpol( $cal, $units, 'units' );
 		$f = fopen('data.json', 'w');
-		fwrite($f, '{"raw": '. $raw. ', "units": '. $units. ', "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, "calib": {"30.0": -18753708, "10.0": -11127584, "0.0": -7110488}, "keg": {"name": "'. $keg. '", "fullraw": '. $raw. ', "volume": '. $vol. ', "left": '. $vol. '}}');
+		fwrite($f, '{"raw": '. $raw. ', "units": '. sprintf( '%0.01f', $units). ', "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, '. print_calib($cal). ', "keg": {"name": "'. $keg. '", "fullraw": '. $raw. ', "volume": '. $vol. ', "left": '. $vol. '}}');
 		fclose($f);
 	}
 }
 
 else if ( $del == 'yes' ) {
+	$cal = get_calib();
+	$units = 0.0;
+	$raw = interpol( $cal, $units, 'units' );
 	$f = fopen('data.json', 'w');
-	fwrite($f, '{"raw": -20306465, "units": 34.1, "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, "calib": {"30.0": -18753708, "10.0": -11127584, "0.0": -7110488}}');
+	fwrite($f, '{"raw": '. $raw. ', "units": '. sprintf( '%0.01f', $units). ', "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, '. print_calib($cal). '}');
 	fclose($f);
 	echo "Kill keg ...";
 }
@@ -99,5 +113,7 @@ else {
 		echo $i. " ". $r. " ". $u. PHP_EOL;
 	}
 	*/
+	$cal = get_calib();
+	var_dump(print_calib($cal));
 }
 ?>
