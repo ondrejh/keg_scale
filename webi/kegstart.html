@@ -30,10 +30,16 @@
                     secunit = data.secondary_unit;
                     if ('keg' in data) {
                         keg=true;
-                        $('#finish_keg').hide(); // tohle nefunguje
+                        $('#begin_keg').hide();
+                        $('#keg_name_line').hide();
+                        $('#keg_volume_line').hide();
+                        $('#finish_keg').show();
                     } else {
                         keg=false;
-                        $('#finish_keg').show(); // ani tohle ne
+                        $('#finish_keg').hide();
+                        $('#begin_keg').show();
+                        $('#keg_name_line').show();
+                        $('#keg_volume_line').show();
                     }
                 }),
                 error: (function() {
@@ -53,11 +59,11 @@
             
             <h1>Kegator - nový sud <span id='status'></span></h1>
             <p class="weight">Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
-            <p class="line">
+            <p class="line" id='keg_name_line'>
                 <label for="keg_name">Budeme mu říkat</label>
                 <input id='keg_name' class="field" placeholder='Můj soudek 12&deg'/>
             </p>
-            <p class="lline">
+            <p class="lline" id='keg_volume_line'>
                 <label for="keg_volume">Jeho obsah je</label>
                 <input type='number' class="field" id='keg_volume'/> <span class='usec'></span>
             </p>
@@ -92,8 +98,8 @@
         });        
 
         $( "#finish_keg" ).click(function() {
-            alert('Je po něm :-(');
             $.get( "keg.php" , { del: 'yes' });
+            alert('Je po něm :-(');
             window.location.href = 'index.html';
         });        
 
