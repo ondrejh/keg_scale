@@ -26,19 +26,30 @@
                     $("#units").text(data.units);
                     $("#status").text('');
                     $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
-                    $('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });
                     secunit = data.secondary_unit;
                     if ('keg' in data) {
                         keg=false;
-                        //$('#begin_keg').hide();
+						$('#keg_title').html(('name' in data.keg)?data.keg.name:'Odražení sudu');
+						if ('left' in data.keg) {
+							$('#keg_left_label').html(', Zbývá: ');
+							$('#keg_left').html(data.keg.left);
+							$('#usec').html(' ' + secunit);
+						}
+						else {
+							$('#keg_left_label').html('');
+							$('#keg_left').html('');
+							$('#usec').html('');
+						}
                         $('#begin_keg').html('Odrazit a ukončit');
                         $('#keg_name_line').hide();
                         $('#keg_volume_line').hide();
-                        //$('#finish_keg').show();
                     } else {
                         keg=true;
-                        //$('#finish_keg').hide();
-                        $('#begin_keg').html('Narazit');
+                        $('#keg_left_label').html('');
+                        $('#keg_left').html('');
+                        $('#usec').html('');
+                        $('#keg_title').html('Nový sud');
+                        $('#begin_keg').html('Narazit teď');
                         $('#keg_name_line').show();
                         $('#keg_volume_line').show();
                     }
@@ -58,8 +69,11 @@
     <main>
         <div class="container">
             
-            <h1>Kegator - nový sud <span id='status'></span></h1>
-            <p class="weight">Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
+            <h1><span id='keg_title'>Nový sud</span><span id='status'></span></h1>
+            <p class="weight">
+				Váha: <span id='units'>---</span> <span class='uprim'>units</span>
+				<span id='keg_left_label'></span><strong><span id='keg_left'></span></strong><span id='usec'></span>
+            </p>
             <p class="line" id='keg_name_line'>
                 <label for="keg_name">Budeme mu říkat</label>
                 <input id='keg_name' class="field" placeholder='Můj soudek 12&deg'/>
@@ -70,7 +84,6 @@
             </p>
             <p class="btns">
                 <button id='begin_keg' class="btn">Narazit teď</button>
-                <!--<button id='finish_keg' class="btn">Odrazit a ukončit</button>-->
                 <button id='cancel' class="btn">Zrušit</button>
             </p>
 
@@ -103,12 +116,6 @@
 				alert('Je po něm :-(');
 				window.location.href = 'index.html';
 			}
-        });        
-
-        $( "#finish_keg" ).click(function() {
-            $.get( "keg.php" , { del: 'yes' });
-            alert('Je po něm :-(');
-            window.location.href = 'index.html';
         });        
 
         $( "#cancel" ).click(function() {
