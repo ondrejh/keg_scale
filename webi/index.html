@@ -32,9 +32,11 @@
                         $('#keg_left').text(data.keg.left);
                         $('#keg_volume').text(data.keg.volume);
 						$('#keg_label').text(data.keg.name);
+						$('#begin').html('Odrazit');
                         $(".keg").each(function(index, obj) { $(this).show(); });
                     } else {
                         keg=false;
+                        $('#begin').html('Nový sud');
                         $(".keg").each(function(index, obj) { $(this).hide(); });
                     }
                 }),
@@ -63,8 +65,8 @@
             </div>
             <p class="btns">
                 <button id='begin' class="btn">Nový sud</button>
-                <button id='wifiset' class="btn">Nastavit síť</button>
-                <button id='calibrate' class="btn">Kalibrovat</button>
+                <button id='wifiset' class="btn">Nastavení</button>
+                <button id='calibrate' class="btn">Kalibrace</button>
             </p>
                 
         </div>
@@ -74,25 +76,24 @@
     <script>
         $( "#begin" ).click(function() {
             if (keg) {
-                if (confirm('Skutečně chceš narazit nový sud?'))
-                    window.location.href = 'kegstart.html';
+                if (confirm('Skutečně chceš odrazit tento sud?'))
+                    window.location.href = 'keg.html';
                 else
-                    alert('Tak nic no ...');
+                    alert('No proto ...');
             } else
-                window.location.href = 'kegstart.html';
+                window.location.href = 'keg.html';
         });        
+        
         $( "#calibrate" ).click(function() {
-            if (keg) {
-                if (confirm('Opravdu chceš kalibrovat když je naraženo?'))
-                    window.location.href = 'calibration.html';
-                else
-                    alert('Nelze kalibrovat, protože je naraženo!');
-            }
-            else
-                window.location.href = 'calibration.html';
-        });        
+			msg = 'Opravdu chceš kalibrovat' + (keg?' když je naraženo':'') + '?';
+			if (confirm(msg))
+				window.location.href = 'calibration.html';
+			else
+				alert('OK. Funguje to, nesahej na to!');
+        });
+                
         $( "#wifiset" ).click(function() {
-			if (confirm('Opravdu chceš nastavovat wifi?'))
+			if (confirm('Opravdu chceš něco nastavovat?'))
 				window.location.href = 'netsetup.html';
 			else
 				alert('OK. Funguje to, nesahej na to!');
