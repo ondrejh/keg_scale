@@ -4,7 +4,7 @@
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Kegator - nový sud</title>
+    <title>Kegator - nastavení</title>
     <link rel="stylesheet" type="text/css" href="sass/style.css">
 
     <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
@@ -16,31 +16,19 @@
     <script src="jquery-3.5.1.min.js"></script>
     <script>
         var keg = false;
-        var secunit = '';
         function load() {
-            var url = "data.json";
+            var url = "config.json";
             $.ajax({
                 url: url,
                 dataType: 'json',
                 success: (function(data) {
-                    $("#units").text(data.units);
-                    $("#status").text('');
-                    //$('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
-                    //$('.usec').each(function(index, obj) { $(this).text(data.secondary_unit); });
-                    secunit = data.secondary_unit;
-                    if ('keg' in data) {
-                        keg=true;
-                        $('#finish_keg').hide(); // tohle nefunguje
-                    } else {
-                        keg=false;
-                        $('#finish_keg').show(); // ani tohle ne
-                    }
+                    //$("#status").text('');
                 }),
                 error: (function() {
-                    $("#status").text(' ( offline )');
+                    //$("#status").text(' ( offline )');
                 }),
                 complete: (function() {
-                    setTimeout(function() { load(); }, 500);
+                    //setTimeout(function() { load(); }, 500);
                 }),
                 timeout: 3000
             });
@@ -51,8 +39,7 @@
     <main>
         <div class="container">
             
-            <h1>Kegator - nastavení Wifi<span id='status'></span></h1>
-            <p class="weight">Váha: <span id='units'>---</span> <span class='uprim'>units</span></p>
+            <h1>Nastavení</h1>
             <p class="line">
                 <label for="wifi_ssid">Jméno sítě</label>
                 <input id='wifi_ssid' class="field" placeholder='pivniGaraz'/>
@@ -66,8 +53,7 @@
                 <input  id='device_key' class="field" placeholder='abCd3456'/>
             </p>
             <p class="btns">
-                <button id='save_wifi' class="btn">Změnit nastavení</button>
-                <button id='delete_wifi' class="btn">Smazat síť</button>
+                <button id='save' class="btn">Potvrdit</button>
                 <button id='cancel' class="btn">Zrušit</button>
             </p>
 
@@ -76,31 +62,36 @@
     
 
     <script>
-        $( "#save_wifi" ).click(function() {
+        $( "#save" ).click(function() {
+			var geto = {};
             var name = $('#wifi_ssid').val();
-            if ((name == undefined) || (name == "")) {
-                alert('Tohle nejde. Síť se přece nějak jmenuje.');
-                return;
-            }
-            var pwd = $('#wifi_pwd').val();
-            if ((pwd == undefined) || (pwd == "")) {
-                alert('Tohle nejde. Síť má přece nějaké heslo.');
-                return;
-            }
-            var dkey = $('#device_key').val();
-            if ((dkey == undefined) || (dkey == "")) {
-				alert('Tohle nejde. Chybí registrační klíč');
-				return;
+            if (! ((name == undefined) || (name == ""))) {
+				geto['wssid'] = name;
+				var pwd = $('#wifi_pwd').val();
+				if ((pwd == undefined) || (pwd == ""))
+					pwd = '';
+				geto['wpwd'] = pwd;
 			}
-            //$.get( "wifi.php" , { name: name, pwd: pwd, dkey: dkey });
-            alert('Nastavuji wifi "' + name + '", heslo ' + pwd + ', klíč ' + dkey);
+            var dkey = $('#device_key').val();
+			if (! ((dkey == undefined) || (dkey == "")))
+				geto['dkey'] = dkey;
 
-            window.location.href = 'index.html';
-        });        
+			var gkeys = Object.keys(geto)
+			var glen = gkeys.length;
+			if (glen === 0) {
+				alert('Není co nastavovat!'); }
+			else {
+				var msg = 'Nastavuji';
+				for (var k in geto) {
+					if ( k == 'wssid' )
+						msg += ' síť';
+					if ( k == 'dkey' )
+						msg += ' klíč';
+				}
+				$.get( 'conf.php' , geto);
+				alert(msg);
+			}
 
-        $( "#delete_wifi" ).click(function() {
-            alert('A je pryč ...');
-            //$.get( "wifi.php" , { del: 'yes' });
             window.location.href = 'index.html';
         });        
 
