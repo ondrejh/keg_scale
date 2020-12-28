@@ -184,13 +184,11 @@ if ( $addc != null ) {
 	// sort
 	$u = array();
 	$v = array();
-	if ( isset($obj->{'calib'}) ) {
-		$c = ($obj->{'calib'});
-		$cv = get_object_vars($c);
-		foreach ( $cv as $k => $vv ) {
-			array_push( $u, floatval($k) );
-			array_push( $v, $vv );
-		}
+	$c = ($obj->{'calib'});
+	$cv = get_object_vars($c);
+	foreach ( $cv as $k => $vv ) {
+		array_push( $u, floatval($k) );
+		array_push( $v, $vv );
 	}
 	$cal['units'] = $u;
 	$cal['raw'] = $v;
@@ -206,16 +204,22 @@ if ( $addc != null ) {
 	$succ = true;
 }
 
+if ( $delc != null ) {
+	
+}
+
 if ($succ == true) {
 	echo 'OK';
 }
 else {
 	echo 'ERROR';
 
+	/*
 	# pring calibration
 	echo PHP_EOL;
 	$cal = get_calib();
 	print_calib($cal);
+	*/
 
 	/*
 	# test interpolation
