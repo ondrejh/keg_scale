@@ -117,7 +117,7 @@
 				});
 			}
 			else { // not keg
-				$.post( "do.php" , { del: 'yes' } function(data, status) {
+				$.post( "do.php" , { del: 'yes' }, function(data, status) {
 					if ((status == 'success') && (data == 'OK')) {
 						alert('Je po něm :-(');
 						window.location.href = 'index.html';

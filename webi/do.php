@@ -14,6 +14,7 @@ $dkey = isset($_POST['dkey']) ? $_POST['dkey'] : null;
 // calib
 $addc = isset($_POST['addc']) ? $_POST['addc'] : null;
 $delc = isset($_POST['delc']) ? $_POST['delc'] : null;
+$rawc = isset($_POST['valc']) ? $_POST['valc'] : null;
 
 // pin
 //$pin = isset($_POST['pin']) ? $_POST['pin'] : null; future feature
@@ -147,7 +148,7 @@ if (( $keg != null ) && ( $vol != null )) {
 }
 
 // finish keg
-else if ( $del == 'yes' ) {
+if ( $del == 'yes' ) {
 	$cal = get_calib();
 	$units = 0.0;
 	$raw = (int)interpol( $cal, $units, 'units' );
@@ -158,11 +159,63 @@ else if ( $del == 'yes' ) {
 	$succ = true;
 }
 
+// set wifi
+if ( $wssid != null ) {
+	$jobj = json_fopen( 'conf.json' );
+	$jobj->{'wssid'} = $wssid;
+	$jobj->{'wpwd'} = ($wpwd != null)?false:true;
+	json_fsave( $fname, $jobj );
+	$succ = true;
+}
+
+// set device key
+if ( $dkey != null ) {
+	add_json_key( 'data.json', 'dkey', $dkey );
+	$succ = true;
+}
+
+// calibration table - add value
+if ( $addc != null ) {
+	// add row
+	$obj = json_fopen('data.json');
+	$raw = ( $rawc != null) ? $rawc : $obj->{'raw'};
+	$obj->{'calib'}->{sprintf("%0.01f", $addc)} = $raw;
+
+	// sort
+	$u = array();
+	$v = array();
+	if ( isset($obj->{'calib'}) ) {
+		$c = ($obj->{'calib'});
+		$cv = get_object_vars($c);
+		foreach ( $cv as $k => $vv ) {
+			array_push( $u, floatval($k) );
+			array_push( $v, $vv );
+		}
+	}
+	$cal['units'] = $u;
+	$cal['raw'] = $v;
+	$cal = bubble_calib($cal, 'units');
+	$l = sizeof($cal['units']);
+	echo $l. PHP_EOL;
+	$obj->{'calib'} = array();
+	for ($i=0; $i<$l;$i++)
+		$obj->{'calib'}[sprintf("%0.01f", $cal['units'][$i])] = $cal['raw'][$i];
+
+	// save
+	json_fsave( 'data.json', $obj );
+	$succ = true;
+}
+
 if ($succ == true) {
 	echo 'OK';
 }
 else {
 	echo 'ERROR';
+
+	# pring calibration
+	echo PHP_EOL;
+	$cal = get_calib();
+	print_calib($cal);
 
 	/*
 	# test interpolation
