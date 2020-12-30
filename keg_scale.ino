@@ -1,10 +1,13 @@
 /**
- * keg_scale
+ * keg_scale v0.11 alpha
+ * 
+ * done:
+ *   individual device and ssid name
+ *   new webi using post
  * 
  * todo:
- *   keg: display ( if needed )
- *   webi: show keg name
- *   calibration: input raw (option)
+ *   connect to local wifi
+ *   store config data
  */
 
 #include "HX711.h"
@@ -86,7 +89,7 @@ float keg_full;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // wifi ap settings
-const char *ssid = "Kegator1";
+char ssid[16] = "keg123456";
 const char *password = "k3Gat0rr";
 
 ESP8266WebServer server(80);
@@ -122,6 +125,10 @@ void setup() {
   // show initial display buffer contents on the screen
   display.display();
 
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  sprintf(ssid, "keg%02X%02X%02X", mac[3], mac[4], mac[5]);
+
   // start the access point
   IPAddress ip(192, 168, 42, 1);
   IPAddress subnet(255, 255, 255, 0);
@@ -143,16 +150,20 @@ void setup() {
   // mdns setup
   server.on("/", handleRoot);
   server.on(index_name, handleRoot);
-  server.on(calibration_name, handleCalibration);
-  server.on(kegstart_name, handleKegstart);
+  server.on(keg_name, handleKegstart);
+  server.on(calib_name, handleCalibration);
+  server.on(config_name, handleConfiguration);
   server.on(sass_style_name, handleStyle);
   server.on(favicon_name, handleFavicon);
+  server.on("img/favicon.ico", handleFavicon);
   server.on(img_bg_name, handleBg);
+  server.on(img_barell_name, handleBarell);
   
   server.on(jquery_name, handleJquery);
   server.on("/data.json", handleData);
-  server.on("/calib.php", HTTP_GET, handleCalib);
-  server.on("/keg.php", HTTP_GET, handleKeg);
+  //server.on("/calib.php", HTTP_GET, handleCalib);
+  //server.on("/keg.php", HTTP_GET, handleKeg);
+  server.on("/do.php", HTTP_POST, handleDo);
   server.onNotFound(handleNotFound);
 
   server.begin();
