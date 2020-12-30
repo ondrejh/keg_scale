@@ -22,7 +22,7 @@
                 url: url,
                 dataType: 'json',
                 success: (function(data) {
-                    var s = '<tr><th>Senzor</th><th>Měření [' + data.primary_unit + ']</th></tr>';
+                    var s = '<tr><th>Snímač</th><th>' + data.primary_unit + '</th></tr>';
                     var cnt = 1;
                     $.each( data.calib , function(key, value) {
                         s += '<tr><td>' + value + '</td><td>' + key + '</td><td><button id="delcal" value="' + cnt + '">Smaž</button></td></tr>';
@@ -36,7 +36,7 @@
                     $('.units').each(function(index, obj) { $(this).text(data.units); });
                 }),
                 error: (function() {
-                    $("#status").text(' ( offline )');
+                    $("#status").text(' (offline)');
                 }),
                 complete: (function() {
                     setTimeout(function() { load(); }, 500);
@@ -54,7 +54,7 @@
             <article>
                 <h1>Kalibrace<span id='status'></span></h1>
                 <p class="weight">
-					Senzor: <strong><span class='raw'>---</span></strong>
+					Snímač: <strong><span class='raw'>---</span></strong>
 					, Váha: <strong><span class='units'>---</span></strong> <span class='uprim'>units</span>
 				</p>
                 <p class="line">
@@ -67,9 +67,6 @@
                 <h2>Kalibrační tabulka</h2>
                 <table id='clbtab' class="table">
                 </table>
-                <!--<h2>Měření</h2>
-                <p><span id='units'>---</span> <span class='uprim'></span><p>
-                <p><span class='raw'>---</span></p>-->
                 <p class="btns"><button id='done' class="btn">Hotovo</button></p>
             </article>
 
