@@ -36,9 +36,46 @@ void handleFavicon() {
   digitalWrite(WLED, OFF);
 }
 
+void handleFavicon16() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_favicon_16x16_bin, sizeof(img_favicon_16x16_bin));  
+  digitalWrite(WLED, OFF);
+}
+
+void handleFavicon32() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_favicon_32x32_bin, sizeof(img_favicon_32x32_bin));  
+  digitalWrite(WLED, OFF);
+}
+
+void handleAppleIcon() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_apple_touch_icon_bin, sizeof(img_apple_touch_icon_bin));  
+  digitalWrite(WLED, OFF);
+}
+
+void handleAndroid512() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_android_chrome_512x512_bin, sizeof(img_android_chrome_512x512_bin));  
+  digitalWrite(WLED, OFF);
+}
+
+void handleAndroid192() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_android_chrome_192x192_bin, sizeof(img_android_chrome_192x192_bin));  
+  digitalWrite(WLED, OFF);
+}
+
+void handleSite() {
+  digitalWrite(WLED, ON);
+  server.send(200, "image/png", img_site_bin, sizeof(img_site_bin));  
+  digitalWrite(WLED, OFF);
+  
+}
+
 void handleBg() {
   digitalWrite(WLED, ON);
-  server.send(200, "image/x-icon", img_bg_bin, sizeof(img_bg_bin));
+  server.send(200, "image/jpeg", img_bg_bin, sizeof(img_bg_bin));
   digitalWrite(WLED, OFF);
 }
 
@@ -50,7 +87,7 @@ void handleBarell() {
 
 void handleJquery() {
   digitalWrite(WLED, ON);
-  server.send(200, "application/javascript", jquery_bin, sizeof(jquery_bin));
+  server.send(200, "application/javascript", jquery_3_bin, sizeof(jquery_3_bin));
   digitalWrite(WLED, OFF);
 }
 

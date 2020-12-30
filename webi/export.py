@@ -5,7 +5,7 @@ import re
 
 def get_var_name(fname):
 
-    return fname.replace('-', '.').replace('/', '_').split('.')[0]
+    return fname.replace('-', '_').replace('/', '_').split('.')[0]
 
 
 def import_html(fname):
@@ -60,11 +60,25 @@ with open('../webi.h', 'w') as fout:
     print('  Embed binary css file style.css')
     fout.write(import_bin('sass/style.css'))#, end=None))
     print('  Embed binary favicon.ico')
-    fout.write(import_bin('favicon.ico'))#, end=None))
+    fout.write(import_bin('favicon.ico', end=None))
     print('  Embed binary img/barell.svg')
     fout.write(import_bin('img/barell.svg', end=None))
     print('  Embed binary img/bg.jpg')
-    fout.write(import_bin('img/bg.jpg'))#, end=None))
+    fout.write(import_bin('img/bg.jpg', end=None))
+
+    print('  Embed binary img/favicon-16x16.png')
+    fout.write(import_bin('img/favicon-16x16.png', end=None))
+    print('  Embed binary img/favicon-32x32.png')
+    fout.write(import_bin('img/favicon-32x32.png', end=None))
+    print('  Embed binary img/apple-touch-icon.png')
+    fout.write(import_bin('img/apple-touch-icon.png', end=None))
+    print('  Embed binary img/site.webmanifest')
+    fout.write(import_bin('img/site.webmanifest'))#, end=None))
+    print('  Embed binary img/android-chrome-512x512.png')
+    fout.write(import_bin('img/android-chrome-512x512.png', end=None))
+    print('  Embed binary img/android-chrome-192x192.png')
+    fout.write(import_bin('img/android-chrome-192x192.png', end=None))
+    
     print('  Embed binary file jquery-3.5.1.min.js')
     fout.write(import_bin('jquery-3.5.1.min.js', end=None))
     fout.write('#endif __WEBI_H__\n')

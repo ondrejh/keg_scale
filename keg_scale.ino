@@ -158,8 +158,15 @@ void setup() {
   server.on("img/favicon.ico", handleFavicon);
   server.on(img_bg_name, handleBg);
   server.on(img_barell_name, handleBarell);
+
+  server.on(img_favicon_32x32_name, handleFavicon32);
+  server.on(img_favicon_16x16_name, handleFavicon16);
+  server.on(img_apple_touch_icon_name, handleAppleIcon);
+  server.on(img_android_chrome_512x512_name, handleAndroid512);
+  server.on(img_android_chrome_192x192_name, handleAndroid192);
+  server.on(img_site_name, handleSite);
   
-  server.on(jquery_name, handleJquery);
+  server.on(jquery_3_name, handleJquery);
   server.on("/data.json", handleData);
   //server.on("/calib.php", HTTP_GET, handleCalib);
   //server.on("/keg.php", HTTP_GET, handleKeg);
