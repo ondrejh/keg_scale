@@ -148,7 +148,7 @@ if (( $keg != null ) && ( $vol != null )) {
 }
 
 // finish keg
-if ( $del == 'yes' ) {
+else if ( $del == 'yes' ) {
 	$cal = get_calib();
 	$units = 0.0;
 	$raw = (int)interpol( $cal, $units, 'units' );
@@ -160,7 +160,7 @@ if ( $del == 'yes' ) {
 }
 
 // set wifi
-if ( $wssid != null ) {
+else if ( $wssid != null ) {
 	$jobj = json_fopen( 'conf.json' );
 	$jobj->{'wssid'} = $wssid;
 	$jobj->{'wpwd'} = ($wpwd != null)?false:true;
@@ -169,13 +169,13 @@ if ( $wssid != null ) {
 }
 
 // set device key
-if ( $dkey != null ) {
+else if ( $dkey != null ) {
 	add_json_key( 'data.json', 'dkey', $dkey );
 	$succ = true;
 }
 
 // calibration table - add value
-if ( $addc != null ) {
+else if ( $addc != null ) {
 	// add row
 	$obj = json_fopen('data.json');
 	$raw = ( $rawc != null) ? $rawc : $obj->{'raw'};
@@ -204,8 +204,33 @@ if ( $addc != null ) {
 	$succ = true;
 }
 
-if ( $delc != null ) {
-	
+// calibration table - remove value
+else if ( $delc != null ) {
+	$d = intval($delc);
+	$obj = json_fopen('data.json');
+
+	// list but forget value to be removed 
+	$u = array();
+	$v = array();
+	$c = ($obj->{'calib'});
+	$cv = get_object_vars($c);
+	foreach ( $cv as $k => $vv ) {
+		array_push( $u, floatval($k) );
+		array_push( $v, $vv );
+	}
+	$cal['units'] = $u;
+	$cal['raw'] = $v;
+	$l = sizeof($cal['units']);
+	echo $l. PHP_EOL;
+	$obj->{'calib'} = array();
+	for ($i=0; $i<$l;$i++) {
+		if ($i + 1 != $d)
+			$obj->{'calib'}[sprintf("%0.01f", $cal['units'][$i])] = $cal['raw'][$i];
+	}
+
+	// save
+	json_fsave( 'data.json', $obj );
+	$succ = true;
 }
 
 if ($succ == true) {

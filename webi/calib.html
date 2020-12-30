@@ -86,12 +86,16 @@
 				else
 					return;
 			});
-            //$.get( "calib.php" , { add: str });
         });
         $(document).on("click", "#delcal", function(){
             var str = $(this).val();
-            alert(str);
-            //$.get( "calib.php" , { del: str });
+            $.post( "do.php", { delc: str }, function(data, status) {
+				if ((status == 'success') && (data == 'OK')) {
+					window.location.href = 'calib.html';
+				}
+				else
+					return;
+			});
         });
     </script>
 </body>
