@@ -121,127 +121,13 @@ void handleData() {
   digitalWrite(WLED, OFF);
 }
 
-/*void handleCalib() {
-  digitalWrite(WLED, ON);
-
-  char msg[1024];
-
-  if (server.hasArg("add")) {
-    char sval[16];
-    server.arg("add").toCharArray(sval, 16);
-    //if (server.hasArg("val")))
-    float val;
-    if (sscanf(sval, "%f", &val) != 1) {
-      sprintf(msg, "Error: input arg '%s' can't be converted to float", sval); 
-    }
-    else {
-      int i;
-      for (i=0; i<calib.p; i++) {
-        if (val == calib.y[i]) {
-          calib.x[i] = scale_avg;
-          sprintf(msg, "Value %s updated to %d", sval, scale_avg);
-          break;
-        }
-      }
-      if (i == calib.p) {
-        if (calib.p < CLBLEN) {
-          calib.x[calib.p] = scale_avg;
-          calib.y[calib.p] = val;
-          calib.p ++;
-
-          // bubblesort
-          bubble_calib();
-
-          // save to eeprom
-          eesave(EEPROM_CALIB_ADDR, &calib, sizeof(calib));
-
-          sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
-        }
-        else {
-          sprintf(msg, "Error: maximum number of callibration points reached");
-        }
-      }
-    }
-  }
-  else if (server.hasArg("del")) {
-    char sval[16];
-    server.arg("del").toCharArray(sval, 16);
-    unsigned int val;
-    if (sscanf(sval, "%d", &val) != 1) {
-      sprintf(msg, "Error: input arg '%s' can't be converted to int", sval); 
-    }
-    else {
-      if ((val > 0) && (val <= calib.p) && (calib.p > 2)) {
-        for (int i=val - 1; i < (CLBLEN - 1); i++) {
-          calib.x[i] = calib.x[i + 1];
-          calib.y[i] = calib.y[i + 1];
-        }
-        calib.p --;
-
-        // save to eeprom
-        eesave(EEPROM_CALIB_ADDR, &calib, sizeof(calib));
-        
-        sprintf(msg, "Value %s deleted from callibration", sval);
-      }
-      else {
-        sprintf(msg, "Value %s can't be deleted from callibration", sval);
-      }
-    }
-  }
-  else {
-    sprintf(msg, "Error: no 'add' arg found");
-  }
-
-  server.send(200, "text/html", msg);
-
-  
-  digitalWrite(WLED, OFF);
-}
-
-void handleKeg() {
-  digitalWrite(WLED, ON);
-  char msg[256];
-  char keg_name[KEG_LABEL_MAX + 1];
-  char keg_vol[17];
-  float keg_vol_float;
-  if (server.hasArg("keg") && server.hasArg("vol")) {
-    server.arg("keg").toCharArray(keg_name, KEG_LABEL_MAX);
-    keg_name[KEG_LABEL_MAX] = '\0';
-    server.arg("vol").toCharArray(keg_vol, 16);
-    keg_vol[16] = '\0';
-    if (sscanf(keg_vol, "%f", &keg_vol_float) != 1) {
-      sprintf(msg, "Error: incorrect volume input");
-    }
-    else {
-      sprintf(msg, "New keg %s volume %0.0f", keg_name, keg_vol_float);
-      strncpy(keg.label, keg_name, KEG_LABEL_MAX);
-      keg.fullraw = scale_avg;
-      keg_full = interpolate(keg.fullraw);
-      keg.volume = keg_vol_float;
-      keg_left = keg_vol_float;
-      keg.keg = true;
-      // save to eeprom
-      eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
-    }
-  }
-  else if (server.hasArg("del") && (server.arg("del") == "yes")) {
-    sprintf(msg, "Kill keg %s", keg.label);
-    keg.keg = false;
-    // save to eeprom
-    eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
-  }
-  else
-    sprintf(msg, "Input arguments missing");
-  server.send(200, "text/html", msg);
-  digitalWrite(WLED, OFF);
-}*/
-
 void handleDo() {
   char msg[256];
   char keg_name[KEG_LABEL_MAX + 1];
   char keg_vol[17];
   float keg_vol_float;
   bool res = false;
+
   if (server.hasArg("keg") && server.hasArg("vol")) {
     server.arg("keg").toCharArray(keg_name, KEG_LABEL_MAX);
     keg_name[KEG_LABEL_MAX] = '\0';
@@ -273,20 +159,29 @@ void handleDo() {
     // OK
     res = true;
   }
+
   else if (server.hasArg("addc")) {
     char sval[16];
-    server.arg("addc").toCharArray(sval, 16);
-    //if (server.hasArg("val")))
     float val;
-    if (sscanf(sval, "%f", &val) != 1) {
-      //sprintf(msg, "Error: input arg '%s' can't be converted to float", sval); 
+    int32_t raw;
+    server.arg("addc").toCharArray(sval, 16);
+
+    if (server.hasArg("rawc")) {
+      char rval[16];
+      server.arg("rawc").toCharArray(rval, 16);
+      if (sscanf(rval, "%i", &raw) != 1) {
+        raw = scale_avg;
+      }
     }
-    else {
+    else 
+      raw = scale_avg;
+
+    if (sscanf(sval, "%f", &val) == 1) {
       bool needSave = false;
       int i;
       for (i=0; i<calib.p; i++) {
         if (val == calib.y[i]) {
-          calib.x[i] = scale_avg;
+          calib.x[i] = raw;
           //sprintf(msg, "Value %s updated to %d", sval, scale_avg);
           // OK
           needSave = true;
@@ -296,7 +191,7 @@ void handleDo() {
       }
       if (i == calib.p) {
         if (calib.p < CLBLEN) {
-          calib.x[calib.p] = scale_avg;
+          calib.x[calib.p] = raw;
           calib.y[calib.p] = val;
           calib.p ++;
 
@@ -317,6 +212,7 @@ void handleDo() {
       }
     }
   }
+
   else if (server.hasArg("delc")) {
     char sval[16];
     server.arg("delc").toCharArray(sval, 16);

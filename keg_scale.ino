@@ -6,6 +6,7 @@
  *   new webi using post
  * 
  * todo:
+ *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  *   connect to local wifi
  *   store config data
  */
@@ -168,8 +169,6 @@ void setup() {
   
   server.on(jquery_3_name, handleJquery);
   server.on("/data.json", handleData);
-  //server.on("/calib.php", HTTP_GET, handleCalib);
-  //server.on("/keg.php", HTTP_GET, handleKeg);
   server.on("/do.php", HTTP_POST, handleDo);
   server.onNotFound(handleNotFound);
 
