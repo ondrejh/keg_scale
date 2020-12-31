@@ -1,12 +1,12 @@
 /**
- * keg_scale v0.11 alpha
+ * keg_scale v0.12 alpha
  * 
  * done:
  *   individual device and ssid name
  *   new webi using post
+ *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  * 
  * todo:
- *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  *   connect to local wifi
  *   store config data
  */
@@ -26,6 +26,8 @@
 #include <OneWire.h>
 
 #include "webi.h"
+
+const char* sw_version = "0.12";
 
 OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
 

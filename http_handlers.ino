@@ -96,7 +96,7 @@ void handleData() {
 
   char msg[1024];
   int p = 0;
-  p = sprintf(msg, "{\"devid\": \"%s\", ", ssid);
+  p = sprintf(msg, "{\"devid\": \"%s\", \"sw\": \"%s\", ", ssid, sw_version);
   p += sprintf(&msg[p], "\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
   if (temperature_valid)
     p += sprintf(&msg[p], "\"temp\": %0.1f, \"traw\": %d, ", temperature, raw_temp);
