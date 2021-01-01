@@ -17,12 +17,14 @@
     <script>
         var keg = false;
         function load() {
-            var url = "config.json";
+            var url = "data.json";
             $.ajax({
                 url: url,
                 dataType: 'json',
                 success: (function(data) {
                     //$("#status").text('');
+                    if ( 'dkey' in data )
+						document.getElementById("device_key").value = data.dkey;
                 }),
                 error: (function() {
                     //$("#status").text(' ( offline )');
@@ -33,6 +35,23 @@
                 timeout: 3000
             });
         }
+        function save(geto) {
+			var gkeys = Object.keys(geto)
+			var glen = gkeys.length;
+			if (glen === 0) {
+				alert('Není co nastavovat!'); }
+			else {
+				$.post( 'do.php', geto, function(data, status) {
+					if ((status == 'success') && (data == 'OK')) {
+						alert('Nastavení OK');
+						load();
+						//window.location.href = 'config.html';
+					}
+					else
+						return;
+				});
+			}            
+		}
     </script>
 </head>
 <body onload="load();">
@@ -48,12 +67,15 @@
                 <label for="wifi_password">Přihlašovací heslo</label>
                 <input  id='wifi_pwd' class="field" placeholder='123456'/>
             </p>
+            <p class="btns">
+				<button id='save_ssid' class="btn">Potvrdit</button>
+            </p>
             <p class="line">
                 <label for="device_key">Klíč zařízení</label>
-                <input  id='device_key' class="field" placeholder='abCd3456'/>
+                <input  id='device_key' class="field" placeholder='abCd3456' value=''/>
             </p>
             <p class="btns">
-                <button id='save' class="btn">Potvrdit</button>
+                <button id='save_key' class="btn">Potvrdit</button>
                 <button id='cancel' class="btn">Pryč</button>
             </p>
 
@@ -62,7 +84,7 @@
     
 
     <script>
-        $( "#save" ).click(function() {
+        $( "#save_ssid" ).click(function() {
 			var geto = {};
             var name = $('#wifi_ssid').val();
             if (! ((name == undefined) || (name == ""))) {
@@ -72,25 +94,16 @@
 					pwd = '';
 				geto['wpwd'] = pwd;
 			}
+			save(geto);
+		});
+		
+		$( "#save_key" ).click(function() {
+			var geto = {};
             var dkey = $('#device_key').val();
 			if (! ((dkey == undefined) || (dkey == "")))
 				geto['dkey'] = dkey;
-
-			var gkeys = Object.keys(geto)
-			var glen = gkeys.length;
-			if (glen === 0) {
-				alert('Není co nastavovat!'); }
-			else {
-				$.post( 'do.php', geto, function(data, status) {
-					if ((status == 'success') && (data == 'OK')) {
-						alert('Nastavení OK');
-						window.location.href = 'config.html';
-					}
-					else
-						return;
-				});
-			}            
-        });
+			save(geto);
+		});
 
         $( "#cancel" ).click(function() {
             window.location.href = 'index.html';
