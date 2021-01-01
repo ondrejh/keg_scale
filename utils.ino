@@ -1,5 +1,12 @@
 // other utils
 
+void set_conf_default(conf_t *cnf) {
+  cnf->ssid[0] = '\0';
+  cnf->wpwd[0] = '\0';
+  cnf->dkey[0] = '\0';
+  cnf->pin[0] = '\0';
+}
+
 // set calibration defaults (if calibration missing)
 void set_calib_default(calib_t *cal) {
   cal->p = 2;

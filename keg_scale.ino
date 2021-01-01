@@ -5,10 +5,10 @@
  *   individual device and ssid name
  *   new webi using post
  *   allow calib save - restore (do.php?addc=xx&rawc=yy)
+ *   store config data
  * 
  * todo:
  *   connect to local wifi
- *   store config data
  */
 
 #include "HX711.h"
@@ -80,6 +80,21 @@ typedef struct {
 } keg_t;
 
 keg_t keg;
+
+#define EEPROM_CONF_ADDR (EEPROM_KEG_ADDR+2+sizeof(keg_t))
+#define CONF_SSID_MAX 16
+#define CONF_WPWD_MAX 16
+#define CONF_DKEY_MAX 16
+#define CONF_PIN_MAX 16
+typedef struct {
+  char ssid[CONF_SSID_MAX+1];
+  char wpwd[CONF_WPWD_MAX+1];
+  char dkey[CONF_DKEY_MAX+1];
+  char pin[CONF_PIN_MAX+1];
+} conf_t;
+
+conf_t conf;
+
 float keg_left;
 float keg_full;
 
@@ -114,6 +129,8 @@ void setup() {
     set_calib_default(&calib);
   if (eeload(EEPROM_KEG_ADDR, &keg, sizeof(keg)) < 0)
     keg.keg = false;
+  if (eeload(EEPROM_CONF_ADDR, &conf, sizeof(conf)) < 0)
+    set_conf_default(&conf);
 
   // if keg initialize live data
   if (KEG) {

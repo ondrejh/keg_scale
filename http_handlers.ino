@@ -97,6 +97,8 @@ void handleData() {
   char msg[1024];
   int p = 0;
   p = sprintf(msg, "{\"devid\": \"%s\", \"sw\": \"%s\", ", ssid, sw_version);
+  if (conf.dkey[0] != '\0') 
+    p += sprintf(&msg[p], "\"dkey\": \"%s\", ", conf.dkey);
   p += sprintf(&msg[p], "\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
   if (temperature_valid)
     p += sprintf(&msg[p], "\"temp\": %0.1f, \"traw\": %d, ", temperature, raw_temp);
@@ -133,11 +135,7 @@ void handleDo() {
     keg_name[KEG_LABEL_MAX] = '\0';
     server.arg("vol").toCharArray(keg_vol, 16);
     keg_vol[16] = '\0';
-    if (sscanf(keg_vol, "%f", &keg_vol_float) != 1) {
-      //sprintf(msg, "Error: incorrect volume input");
-    }
-    else {
-      //sprintf(msg, "New keg %s volume %0.0f", keg_name, keg_vol_float);
+    if (sscanf(keg_vol, "%f", &keg_vol_float) == 1) {
       strncpy(keg.label, keg_name, KEG_LABEL_MAX);
       keg.fullraw = scale_avg;
       keg_full = interpolate(keg.fullraw);
@@ -152,7 +150,6 @@ void handleDo() {
   }
   
   else if (server.hasArg("del") && (server.arg("del") == "yes")) {
-    //sprintf(msg, "Kill keg %s", keg.label);
     keg.keg = false;
     // save to eeprom
     eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
@@ -160,7 +157,7 @@ void handleDo() {
     res = true;
   }
 
-  else if (server.hasArg("addc")) {
+  else if (server.hasArg("addc")) { // add calibration row
     char sval[16];
     float val;
     int32_t raw;
@@ -182,7 +179,6 @@ void handleDo() {
       for (i=0; i<calib.p; i++) {
         if (val == calib.y[i]) {
           calib.x[i] = raw;
-          //sprintf(msg, "Value %s updated to %d", sval, scale_avg);
           // OK
           needSave = true;
           res = true;
@@ -195,13 +191,9 @@ void handleDo() {
           calib.y[calib.p] = val;
           calib.p ++;
 
-          //sprintf(msg, "Added new callibration point: %s .. %d", sval, scale_avg);
           // OK
           needSave = true;
           res = true;
-        }
-        else {
-          //sprintf(msg, "Error: maximum number of callibration points reached");
         }
       }
       if (needSave) {
@@ -213,14 +205,11 @@ void handleDo() {
     }
   }
 
-  else if (server.hasArg("delc")) {
+  else if (server.hasArg("delc")) { // delete callibration row
     char sval[16];
     server.arg("delc").toCharArray(sval, 16);
     unsigned int val;
-    if (sscanf(sval, "%d", &val) != 1) {
-      //sprintf(msg, "Error: input arg '%s' can't be converted to int", sval); 
-    }
-    else {
+    if (sscanf(sval, "%d", &val) == 1) {
       if ((val > 0) && (val <= calib.p) && (calib.p > 2)) {
         for (int i=val - 1; i < (CLBLEN - 1); i++) {
           calib.x[i] = calib.x[i + 1];
@@ -231,14 +220,30 @@ void handleDo() {
         // save to eeprom
         eesave(EEPROM_CALIB_ADDR, &calib, sizeof(calib));
         
-        //sprintf(msg, "Value %s deleted from callibration", sval);
         // OK
         res = true;
       }
-      else {
-        //sprintf(msg, "Value %s can't be deleted from callibration", sval);
-      }
     }
+  }
+
+  else if (server.hasArg("dkey")) { // set device key
+    server.arg("dkey").toCharArray(conf.dkey, CONF_DKEY_MAX);
+    conf.dkey[CONF_DKEY_MAX] = '\0';
+    eesave(EEPROM_CONF_ADDR, &conf, sizeof(conf));
+    res = true;
+  }
+
+  else if (server.hasArg("wssid")) { // set wifi name (and password)
+    server.arg("wssid").toCharArray(conf.ssid, CONF_SSID_MAX);
+    conf.ssid[CONF_SSID_MAX] = '\0';
+    if (server.hasArg("wpwd")) {
+      server.arg("wpwd").toCharArray(conf.wpwd, CONF_WPWD_MAX);
+      conf.wpwd[CONF_WPWD_MAX] = '\0';
+    }
+    else
+      conf.wpwd[0] = '\0';
+    eesave(EEPROM_CONF_ADDR, &conf, sizeof(conf));
+    res = true;
   }
 
   sprintf(msg, res ? "OK" : "ERROR");
