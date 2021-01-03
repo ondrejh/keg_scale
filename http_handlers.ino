@@ -106,7 +106,7 @@ void handleData() {
   bool first = true;
   for (int i = 0; i < calib.p; i++) {
     if (first) first = false; else p += sprintf(&msg[p], ", ");
-    p += sprintf(&msg[p], "\"%0.1f\": %d", calib.y[i], calib.x[i]);
+    p += sprintf(&msg[p], "\"%0.02f\": %d", calib.y[i], calib.x[i]);
   }
   p += sprintf(&msg[p], "}");
   if (KEG) {

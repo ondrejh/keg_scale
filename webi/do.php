@@ -176,7 +176,7 @@ else if ( $addc != null ) {
 	// add row
 	$obj = json_fopen('data.json');
 	$raw = ( $rawc != null) ? $rawc : $obj->{'raw'};
-	$obj->{'calib'}->{sprintf("%0.01f", $addc)} = $raw;
+	$obj->{'calib'}->{sprintf("%0.02f", $addc)} = $raw;
 
 	// sort
 	$u = array();
@@ -194,7 +194,7 @@ else if ( $addc != null ) {
 	echo $l. PHP_EOL;
 	$obj->{'calib'} = array();
 	for ($i=0; $i<$l;$i++)
-		$obj->{'calib'}[sprintf("%0.01f", $cal['units'][$i])] = $cal['raw'][$i];
+		$obj->{'calib'}[sprintf("%0.02f", $cal['units'][$i])] = $cal['raw'][$i];
 
 	// save
 	json_fsave( 'data.json', $obj );
@@ -222,7 +222,7 @@ else if ( $delc != null ) {
 	$obj->{'calib'} = array();
 	for ($i=0; $i<$l;$i++) {
 		if ($i + 1 != $d)
-			$obj->{'calib'}[sprintf("%0.01f", $cal['units'][$i])] = $cal['raw'][$i];
+			$obj->{'calib'}[sprintf("%0.02f", $cal['units'][$i])] = $cal['raw'][$i];
 	}
 
 	// save
