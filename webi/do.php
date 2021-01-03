@@ -133,29 +133,26 @@ if (( $keg != null ) && ( $vol != null )) {
 	$v = floatval($vol);
 	if ($v == 0) {
 		$succ = false;
-		//echo "Error: incorrect volume input";
 	}
 	else {
-		$succ = true;
-		//echo "New keg ". $keg. " volume ". $vol;
 		$cal = get_calib();
 		$units = $vol * 0.54 + 5.5;
 		$raw = (int)interpol( $cal, $units, 'units' );
-		$f = fopen('data.json', 'w');
-		fwrite($f, '{"raw": '. $raw. ', "units": '. sprintf( '%0.01f', $units). ', "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, '. print_calib($cal). ', "keg": {"name": "'. $keg. '", "fullraw": '. $raw. ', "volume": '. sprintf( '%0.01f', $vol ). ', "left": '. sprintf( '%0.01f', $vol ). '}}');
-		fclose($f);
+		$jd = json_fopen( 'data.json' );
+		$jd->{'keg'} = array('name'=>$keg, 'fullraw'=>$raw, 'volume'=>$vol, 'left'=>$vol);
+		$jd->{'units'} = sprintf('%0.01f', $units);
+		$jd->{'raw'} = $raw;
+		json_fsave( 'data.json', $jd );
+		$succ = true;
 	}
 }
 
 // finish keg
 else if ( $del == 'yes' ) {
 	$cal = get_calib();
-	$units = 0.0;
-	$raw = (int)interpol( $cal, $units, 'units' );
-	$f = fopen('data.json', 'w');
-	fwrite($f, '{"raw": '. $raw. ', "units": '. sprintf( '%0.01f', $units). ', "temp": 25.5, "traw": 408, "primary_unit": "kg", "secondary_unit": "piv", "ratio": 0.500, '. print_calib($cal). '}');
-	fclose($f);
-	//echo "Kill keg ...";
+	$jd = json_fopen( 'data.json' );
+	unset($jd->{'keg'});
+	json_fsave( 'data.json', $jd );
 	$succ = true;
 }
 
