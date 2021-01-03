@@ -134,7 +134,7 @@ const char *calib_html PROGMEM = "\
                 url: url,\n\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
-                    var s = '<tr><th>Senzor</th><th>Měření [' + data.primary_unit + ']</th></tr>';\n\
+                    var s = '<tr><th>Snímač</th><th>' + data.primary_unit + '</th></tr>';\n\
                     var cnt = 1;\n\
                     $.each( data.calib , function(key, value) {\n\
                         s += '<tr><td>' + value + '</td><td>' + key + '</td><td><button id=\"delcal\" value=\"' + cnt + '\">Smaž</button></td></tr>';\n\
@@ -143,12 +143,12 @@ const char *calib_html PROGMEM = "\
                     $(\"#clbtab\").html(s);\n\
                     $(\"#status\").text('');\n\
                     $(\"#clbin\").prop(\"placeholder\", data.units);\n\
-                    $(\"#units\").text(data.units);\n\
                     $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });\n\
                     $('.raw').each(function(index, obj) { $(this).text(data.raw); });\n\
+                    $('.units').each(function(index, obj) { $(this).text(data.units); });\n\
                 }),\n\
                 error: (function() {\n\
-                    $(\"#status\").text(' ( offline )');\n\
+                    $(\"#status\").text(' (offline)');\n\
                 }),\n\
                 complete: (function() {\n\
                     setTimeout(function() { load(); }, 500);\n\
@@ -165,8 +165,11 @@ const char *calib_html PROGMEM = "\
 \n\
             <article>\n\
                 <h1>Kalibrace<span id='status'></span></h1>\n\
+                <p class=\"weight\">\n\
+					Snímač: <strong><span class='raw'>---</span></strong>\n\
+					, Váha: <strong><span class='units'>---</span></strong> <span class='uprim'>units</span>\n\
+				</p>\n\
                 <p class=\"line\">\n\
-                    <span class='raw'>---</span>\n\
                     <input id='clbin' type='number' class=\"field\" step='0.1' placeholder='10.0'/>\n\
                     <span class='uprim'></span>\n\
                 </p>\n\
@@ -176,9 +179,6 @@ const char *calib_html PROGMEM = "\
                 <h2>Kalibrační tabulka</h2>\n\
                 <table id='clbtab' class=\"table\">\n\
                 </table>\n\
-                <h2>Měření</h2>\n\
-                <p><span id='units'>---</span> <span class='uprim'></span><p>\n\
-                <p><span class='raw'>---</span></p>\n\
                 <p class=\"btns\"><button id='done' class=\"btn\">Hotovo</button></p>\n\
             </article>\n\
 \n\
@@ -375,12 +375,14 @@ const char *config_html PROGMEM = "\
     <script>\n\
         var keg = false;\n\
         function load() {\n\
-            var url = \"config.json\";\n\
+            var url = \"data.json\";\n\
             $.ajax({\n\
                 url: url,\n\
                 dataType: 'json',\n\
                 success: (function(data) {\n\
                     //$(\"#status\").text('');\n\
+                    if ( 'dkey' in data )\n\
+						document.getElementById(\"device_key\").value = data.dkey;\n\
                 }),\n\
                 error: (function() {\n\
                     //$(\"#status\").text(' ( offline )');\n\
@@ -391,6 +393,23 @@ const char *config_html PROGMEM = "\
                 timeout: 3000\n\
             });\n\
         }\n\
+        function save(geto) {\n\
+			var gkeys = Object.keys(geto)\n\
+			var glen = gkeys.length;\n\
+			if (glen === 0) {\n\
+				alert('Není co nastavovat!'); }\n\
+			else {\n\
+				$.post( 'do.php', geto, function(data, status) {\n\
+					if ((status == 'success') && (data == 'OK')) {\n\
+						alert('Nastavení OK');\n\
+						load();\n\
+						//window.location.href = 'config.html';\n\
+					}\n\
+					else\n\
+						return;\n\
+				});\n\
+			}\n\
+		}\n\
     </script>\n\
 </head>\n\
 <body onload=\"load();\">\n\
@@ -406,12 +425,15 @@ const char *config_html PROGMEM = "\
                 <label for=\"wifi_password\">Přihlašovací heslo</label>\n\
                 <input  id='wifi_pwd' class=\"field\" placeholder='123456'/>\n\
             </p>\n\
+            <p class=\"btns\">\n\
+				<button id='save_ssid' class=\"btn\">Potvrdit</button>\n\
+            </p>\n\
             <p class=\"line\">\n\
                 <label for=\"device_key\">Klíč zařízení</label>\n\
-                <input  id='device_key' class=\"field\" placeholder='abCd3456'/>\n\
+                <input  id='device_key' class=\"field\" placeholder='abCd3456' value=''/>\n\
             </p>\n\
             <p class=\"btns\">\n\
-                <button id='save' class=\"btn\">Potvrdit</button>\n\
+                <button id='save_key' class=\"btn\">Potvrdit</button>\n\
                 <button id='cancel' class=\"btn\">Pryč</button>\n\
             </p>\n\
 \n\
@@ -420,7 +442,7 @@ const char *config_html PROGMEM = "\
 \n\
 \n\
     <script>\n\
-        $( \"#save\" ).click(function() {\n\
+        $( \"#save_ssid\" ).click(function() {\n\
 			var geto = {};\n\
             var name = $('#wifi_ssid').val();\n\
             if (! ((name == undefined) || (name == \"\"))) {\n\
@@ -430,25 +452,16 @@ const char *config_html PROGMEM = "\
 					pwd = '';\n\
 				geto['wpwd'] = pwd;\n\
 			}\n\
+			save(geto);\n\
+		});\n\
+\n\
+		$( \"#save_key\" ).click(function() {\n\
+			var geto = {};\n\
             var dkey = $('#device_key').val();\n\
 			if (! ((dkey == undefined) || (dkey == \"\")))\n\
 				geto['dkey'] = dkey;\n\
-\n\
-			var gkeys = Object.keys(geto)\n\
-			var glen = gkeys.length;\n\
-			if (glen === 0) {\n\
-				alert('Není co nastavovat!'); }\n\
-			else {\n\
-				$.post( 'do.php', geto, function(data, status) {\n\
-					if ((status == 'success') && (data == 'OK')) {\n\
-						alert('Nastavení OK');\n\
-						window.location.href = 'config.html';\n\
-					}\n\
-					else\n\
-						return;\n\
-				});\n\
-			}\n\
-        });\n\
+			save(geto);\n\
+		});\n\
 \n\
         $( \"#cancel\" ).click(function() {\n\
             window.location.href = 'index.html';\n\
