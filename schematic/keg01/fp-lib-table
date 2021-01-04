@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name keg01)(type KiCad)(uri D:/Projekty/_FRIDAYS_/keg_scale/schematic/lib/keg01.pretty)(options "")(descr ""))
+)
