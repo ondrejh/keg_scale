@@ -4,12 +4,12 @@
 
 #include <Adafruit_NeoPixel.h>
 
-#define LED_PIN D4
+#define LED_PIN D7
 #define NUMPIXELS 1
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-#define GAUGE_PIN D8
+#define GAUGE_PIN D6
 
 #define MIN 590
 #define G1Q (MIN+(MAX-MIN)/4)
@@ -49,46 +49,50 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pixels.begin();
-      pixels.setPixelColor(0, pixels.Color(255, 255, 255));
-      pixels.show();
+  pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+  pixels.show();
+  analogWrite(GAUGE_PIN, 1023);
+  //delay(3000);
 }
 
 // the loop function runs over and over again forever
 void loop() {
   static int cnt=0;
-  switch (cnt) {
+  /*switch (cnt) {
     case 0:
       pixels.setPixelColor(0, pixels.Color(255, 0, 0));
       pixels.show();
-      analogWrite(interpol(0.0), MIN);
+      analogWrite(GAUGE_PIN, interpol(0.0));
       break;
     case 1:
       pixels.setPixelColor(0, pixels.Color(255, 128, 0));
       pixels.show();
-      analogWrite(interpol(0.25), G1Q);
+      analogWrite(GAUGE_PIN, interpol(0.25));
       break;
     case 2:
       pixels.setPixelColor(0, pixels.Color(255, 255, 0));
       pixels.show();
-      analogWrite(interpol(0.5), GH);
+      analogWrite(GAUGE_PIN, interpol(0.5));
       break;
     case 3:
       pixels.setPixelColor(0, pixels.Color(128, 255, 0));
       pixels.show();
-      analogWrite(interpol(0.75), G3Q);
+      analogWrite(GAUGE_PIN, interpol(0.75));
       break;
     case 4:
       pixels.setPixelColor(0, pixels.Color(0, 255, 0));
       pixels.show();
-      analogWrite(interpol(1.0), MAX);
+      analogWrite(GAUGE_PIN, interpol(1.0));
       break;
   }
   //cnt--;
   //if (cnt < 0) cnt=4;
   cnt ++;
-  if (cnt > 4) cnt = 0;
+  if (cnt > 4) cnt = 0;*/
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
+      analogWrite(GAUGE_PIN, 0);
+  delay(2500);                       // wait for a second
   digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off by making the voltage LOW
-  delay(5000);                       // wait for a second
+      analogWrite(GAUGE_PIN, 1023);
+  delay(2500);                       // wait for a second
 }
