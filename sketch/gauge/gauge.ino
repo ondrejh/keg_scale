@@ -40,17 +40,26 @@ int interpol(float val) {
     a = MIN;
     b = G1Q;
   }
-  return a; // + (int)((float)(b - a) * p);
+  
+  int ret = a + (int)((float)(b - a) * p);
+  
+  Serial.print(val);
+  Serial.print(" ");
+  Serial.println(ret);
+  
+  return ret;
 }
 
 // the setup function runs once when you press reset or power the board
 void setup() {
+  Serial.begin(115200);
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pixels.begin();
   pixels.setPixelColor(0, pixels.Color(255, 255, 255));
   pixels.show();
+  analogWriteFreq(20);
   analogWrite(GAUGE_PIN, 1023);
   //delay(3000);
 }
@@ -58,7 +67,8 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
   static int cnt=0;
-  /*switch (cnt) {
+  static bool up=true;
+  switch (cnt) {
     case 0:
       pixels.setPixelColor(0, pixels.Color(255, 0, 0));
       pixels.show();
@@ -85,14 +95,17 @@ void loop() {
       analogWrite(GAUGE_PIN, interpol(1.0));
       break;
   }
-  //cnt--;
-  //if (cnt < 0) cnt=4;
-  cnt ++;
-  if (cnt > 4) cnt = 0;*/
+  
+  if (up) {
+    cnt ++;
+    if (cnt >= 4) up = false;
+  } else {
+    cnt--;
+    if (cnt <= 0) up = true;
+  }
+
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
-      analogWrite(GAUGE_PIN, 0);
-  delay(2500);                       // wait for a second
+  delay(500);                       // wait for a second
   digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off by making the voltage LOW
-      analogWrite(GAUGE_PIN, 1023);
-  delay(2500);                       // wait for a second
+  delay(4500);                       // wait for a second
 }
