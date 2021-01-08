@@ -40,27 +40,22 @@ void loop() {
     switch (cnt) {
       case 0:
         backlight_interpolate(0.0, &r, &g, &b, &blik);
-        //r = 255; g = 0; b = 0; blik = true;
         gauge_set(0.0);
         break;
       case 1:
         backlight_interpolate(0.25, &r, &g, &b, &blik);
-        //r = 192; g = 64; b = 0; blik = false;
         gauge_set(0.25);
         break;
       case 2:
         backlight_interpolate(0.5, &r, &g, &b, &blik);
-        //r = 128; g = 128; b = 0; blik = false;
         gauge_set(0.5);
         break;
       case 3:
         backlight_interpolate(0.75, &r, &g, &b, &blik);
-        //r = 64; g = 192; b = 0; blik = false;     
         gauge_set(0.75);
         break;
       case 4:
         backlight_interpolate(1.0, &r, &g, &b, &blik);
-        //r = 0; g = 255; b = 0; blik = false;    
         gauge_set(1.0);
         break;
     }
