@@ -1,9 +1,45 @@
+bool key_exists(String where, String key) {
+  String k = key;
+  if (key[0] != '"')
+    k = "\"" + key + "\"";
+  if (where.indexOf(k) != -1)
+    return true;
+  return false;
+}
+
+String strip_string(String what) {
+  int b = 0;
+  int e = what.length();
+  for (b=0; b<e; b++) {
+    if (!((what[b] == ':') || (what[b] == ' ') || (what[b] == '"')))
+      break;
+  }
+  e--;
+  for (; e>b; e--) {
+    if (!((what[e] == ' ') || (what[e] == '"') || (what[e] == '}')))
+      break;
+  }
+  return what.substring(b, e+1);
+}
+
+String find_key_simple(String where, String key) {
+  String k = key;
+  if (key[0] != '"')
+    k = "\"" + key + "\"";
+  int b = where.indexOf(k);
+  if (b != -1) {
+    b += k.length();
+    int e = where.indexOf(",", b);
+    return where.substring(b, e); 
+  }
+  return "";
+}
+
 // ------ BACKLIGHT -------------------------------- ///
 
-void backlight_interpolate(float val, uint8_t *r, uint8_t *g, uint8_t *b, bool *blik) {
-  if (val<0.1) *blik = true;
-  else if (val>0.2) *blik = false;
-  
+void backlight_interpolate(float val, uint8_t *r, uint8_t *g, uint8_t *b) {
+  *b = 0;
+
   if (val<0.25) {
     *r = 255;
     *g = 0;
@@ -17,46 +53,20 @@ void backlight_interpolate(float val, uint8_t *r, uint8_t *g, uint8_t *b, bool *
     *g = (int)(v * 255.0);
     *r = 255 - *g;
   }
-  *b = 0;
 }
 
-void backlight_pull(uint8_t r, uint8_t g, uint8_t b, bool blik) {
+void backlight_pull(uint8_t r, uint8_t g, uint8_t b) {
   static uint32_t bl_timer = 0;
   static uint8_t rr = 0, gg = 0, bb = 0;
-  static bool bblik = false;
-  if ((millis() - bl_timer) > 40) {
-    float shad = 1.0;
-    bl_timer += 40;
+  if ((millis() - bl_timer) > 20) {
+    bl_timer += 20;
     if (rr < r) rr++;
     if (rr > r) rr--;
     if (gg < g) gg++;
     if (gg > g) gg--;
-    if (bb < b) bb--;
     if (bb < b) bb++;
-    if (blik)  bblik = true;
-    if (bblik) {
-      static int bcnt = 0;
-      if (bcnt<50)
-        shad = float(50 - bcnt) / 50.0;
-      else if (bcnt<100)
-        shad = 0.0;
-      else if (bcnt<150)
-        shad = float(bcnt - 100) / 50.0;
-      else
-        shad = 1.0;
-      bcnt += 7;
-      if (bcnt >= 200) {
-        bcnt = 0;
-        bblik = false;
-      }
-      //Serial.print(bcnt);
-      //Serial.print(" ");
-      //Serial.println(shad);
-    }
-    uint8_t rrr = (int)(shad * float(rr));
-    uint8_t ggg = (int)(shad * float(gg));
-    uint8_t bbb = (int)(shad * float(bb));
-    backlight_set_color(rrr, ggg, bbb);
+    if (bb > b) bb--;
+    backlight_set_color(rr, gg, bb);
   }
 }
 
