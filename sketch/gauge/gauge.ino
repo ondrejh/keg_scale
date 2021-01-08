@@ -11,101 +11,77 @@ Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 #define GAUGE_PIN D6
 
-#define MIN 590
-#define G1Q (MIN+(MAX-MIN)/4)
-#define GH ((MIN+MAX)/2-15)
-#define G3Q (MIN+(MAX-MIN)*3/4-20)
-#define MAX 850
-
-int interpol(float val) {
-  float p;
-  int a,b;
-  if (val > 0.75) {
-    p = (val - 0.75) * 4.0;
-    a = G3Q;
-    b = MAX;
-  }
-  else if (val > 0.5) {
-    p = (val - 0.5) * 4.0;
-    a = GH;
-    b = G3Q;
-  }
-  else if (val > 0.25) {
-    p = (val - 0.25) * 4.0;
-    a = G1Q;
-    b = GH;
-  }
-  else {
-    p = val * 4.0;
-    a = MIN;
-    b = G1Q;
-  }
-  
-  int ret = a + (int)((float)(b - a) * p);
-  
-  Serial.print(val);
-  Serial.print(" ");
-  Serial.println(ret);
-  
-  return ret;
-}
-
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(115200);
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
+
+  // backlight initialization
   pixels.begin();
-  pixels.setPixelColor(0, pixels.Color(255, 255, 255));
-  pixels.show();
-  analogWriteFreq(20);
-  analogWrite(GAUGE_PIN, 1023);
-  //delay(3000);
+  backlight_set_color(0, 0, 0);
+
+  // gauge initialization
+  analogWriteFreq(10); // kryplítko (kvůli špatnému budíku)
+  gauge_set_pwm(0);
 }
 
 // the loop function runs over and over again forever
 void loop() {
   static int cnt=0;
   static bool up=true;
-  switch (cnt) {
-    case 0:
-      pixels.setPixelColor(0, pixels.Color(255, 0, 0));
-      pixels.show();
-      analogWrite(GAUGE_PIN, interpol(0.0));
-      break;
-    case 1:
-      pixels.setPixelColor(0, pixels.Color(255, 128, 0));
-      pixels.show();
-      analogWrite(GAUGE_PIN, interpol(0.25));
-      break;
-    case 2:
-      pixels.setPixelColor(0, pixels.Color(255, 255, 0));
-      pixels.show();
-      analogWrite(GAUGE_PIN, interpol(0.5));
-      break;
-    case 3:
-      pixels.setPixelColor(0, pixels.Color(128, 255, 0));
-      pixels.show();
-      analogWrite(GAUGE_PIN, interpol(0.75));
-      break;
-    case 4:
-      pixels.setPixelColor(0, pixels.Color(0, 255, 0));
-      pixels.show();
-      analogWrite(GAUGE_PIN, interpol(1.0));
-      break;
-  }
-  
-  if (up) {
-    cnt ++;
-    if (cnt >= 4) up = false;
-  } else {
-    cnt--;
-    if (cnt <= 0) up = true;
+  static uint32_t test_t = 0;
+  static uint32_t blink_t = 0;
+  static bool led_on = false;
+  static uint8_t r = 0, g = 0, b = 0;
+  static bool blik = false;
+  if ( (millis() - test_t) > 5000 ) {
+    test_t += 5000;
+    switch (cnt) {
+      case 0:
+        backlight_interpolate(0.0, &r, &g, &b, &blik);
+        //r = 255; g = 0; b = 0; blik = true;
+        gauge_set(0.0);
+        break;
+      case 1:
+        backlight_interpolate(0.25, &r, &g, &b, &blik);
+        //r = 192; g = 64; b = 0; blik = false;
+        gauge_set(0.25);
+        break;
+      case 2:
+        backlight_interpolate(0.5, &r, &g, &b, &blik);
+        //r = 128; g = 128; b = 0; blik = false;
+        gauge_set(0.5);
+        break;
+      case 3:
+        backlight_interpolate(0.75, &r, &g, &b, &blik);
+        //r = 64; g = 192; b = 0; blik = false;     
+        gauge_set(0.75);
+        break;
+      case 4:
+        backlight_interpolate(1.0, &r, &g, &b, &blik);
+        //r = 0; g = 255; b = 0; blik = false;    
+        gauge_set(1.0);
+        break;
+    }
+    
+    if (up) {
+      cnt ++;
+      if (cnt >= 4) up = false;
+    } else {
+      cnt--;
+      if (cnt <= 0) up = true;
+    }
+    
+    digitalWrite(LED_BUILTIN, LOW);
+    blink_t = test_t;
+    led_on = true;
   }
 
-  digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
-  delay(500);                       // wait for a second
-  digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off by making the voltage LOW
-  delay(4500);                       // wait for a second
+  if (led_on && ((millis() - blink_t) > 500)) {
+    led_on = false;
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+
+  backlight_pull(r, g, b, blik);
 }
