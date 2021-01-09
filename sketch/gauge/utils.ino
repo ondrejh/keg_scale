@@ -1,3 +1,49 @@
+// ------------- DISPLAY -------------------------- //
+
+void display_units(float val, char *unit) {
+  char buff[32];
+  int blen;
+  int tsiz;
+  sprintf(buff, "%0.1f %s", val, unit);
+  blen = strlen(buff);
+  tsiz = SCREEN_WIDTH / (blen * 6);
+  if (tsiz < 1) tsiz = 1;
+  if (tsiz > 3) tsiz = 3;
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setTextSize(tsiz);
+  display.setCursor(SCREEN_WIDTH / 2 - blen * 3 * tsiz, SCREEN_HEIGHT / 2 - tsiz * 4 + 1);
+  display.write(buff);
+  display.display();  
+}
+
+void display_no_signal() {
+  char buff[32];
+  int blen;
+  int tsiz;
+
+  sprintf(buff, "---");
+  
+  blen = strlen(buff);
+  tsiz = SCREEN_WIDTH / (blen * 6);
+  if (tsiz < 1) tsiz = 1;
+  if (tsiz > 3) tsiz = 3;
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setTextSize(tsiz);
+  display.setCursor(SCREEN_WIDTH / 2 - blen * 3 * tsiz, SCREEN_HEIGHT / 2 - tsiz * 4 + 1);
+  display.write(buff);
+  display.display();  
+}
+
+// ------------- JSON ----------------------------- //
+
 bool key_exists(String where, String key) {
   String k = key;
   if (key[0] != '"')
@@ -55,21 +101,6 @@ void backlight_interpolate(float val, uint8_t *r, uint8_t *g, uint8_t *b) {
   }
 }
 
-void backlight_pull(uint8_t r, uint8_t g, uint8_t b) {
-  static uint32_t bl_timer = 0;
-  static uint8_t rr = 0, gg = 0, bb = 0;
-  if ((millis() - bl_timer) > 20) {
-    bl_timer += 20;
-    if (rr < r) rr++;
-    if (rr > r) rr--;
-    if (gg < g) gg++;
-    if (gg > g) gg--;
-    if (bb < b) bb++;
-    if (bb > b) bb--;
-    backlight_set_color(rr, gg, bb);
-  }
-}
-
 void backlight_set_color(uint8_t r, uint8_t g, uint8_t b) {
   for (int i=0; i<NUMPIXELS; i++)
     pixels.setPixelColor(i, pixels.Color(r, g, b));
@@ -83,6 +114,7 @@ void backlight_set_color(uint8_t r, uint8_t g, uint8_t b) {
 #define GAUGE_TUNE_1_4 25
 #define GAUGE_TUNE_2_4 -5
 #define GAUGE_TUNE_3_4 -25
+#define GAUGE_ZERO (GAUGE_MIN / 2)
 
 const int gauge_steps[5] = {\
   GAUGE_MIN,\
@@ -130,4 +162,8 @@ void gauge_set_pwm(int pwm) {
 
 void gauge_set(float val) {
   analogWrite(GAUGE_PIN, gauge_interpolate(val));
+}
+
+void gauge_zero() {
+  analogWrite(GAUGE_PIN, GAUGE_ZERO);
 }
