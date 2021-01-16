@@ -67,6 +67,42 @@ void loop() {
   static uint32_t wget_timer = 1000;
   static int err_cnt = 0;
 
+  static int gauge_setup = -1;
+  static int gauge_setup_value = 0;
+  if (Serial.available() > 0) {
+    char b = Serial.read();
+    bool prnt = false;
+    if ((b >= '0') && (b <= '5')) {
+      gauge_setup = b - '0';
+      gauge_setup_value = get_gauge_steps(gauge_setup);
+      prnt = true;
+    }
+    else if (gauge_setup >= 0) {
+      if (b == '+') {
+        gauge_setup_value ++;
+        prnt = true;
+      }
+      else if (b == '-') {
+        gauge_setup_value --;
+        prnt = true;
+      }
+      else if (b == 'q') {
+        gauge_setup = -1;
+        Serial.print("End");
+      }
+      else if (b == 'w') {
+        Serial.print("Write");
+      }
+    }
+    if (prnt) {
+      Serial.print(gauge_setup);
+      Serial.print(": ");
+      Serial.println(gauge_setup_value);
+      backlight_set_color(255, 255, 255);
+      gauge_set_pwm(gauge_setup_value);
+    }
+  }
+
   if ((millis() - wget_timer) > 1000) {
     if (WiFiMulti.run() == WL_CONNECTED) {
       digitalWrite(LED_BUILTIN, LOW);
@@ -103,17 +139,21 @@ void loop() {
               float fleft = kleft.toFloat();
               float p;
               p = fleft / fvol;
-              backlight_interpolate(p, &r, &g, &b);
-              backlight_set_color(r, g, b);
-              gauge_set(p);
+              if (gauge_setup < 0) {
+                backlight_interpolate(p, &r, &g, &b);
+                backlight_set_color(r, g, b);
+                gauge_set(p);
+              }
               
               v = fleft;
               secu.toCharArray(u, 16);
             }
             else {
               r = 0; g = 0; b = 255;
-              backlight_set_color(r, g, b);
-              gauge_zero();
+              if (gauge_setup < 0) {
+                backlight_set_color(r, g, b);
+                gauge_zero();
+              }
               
               v = prim.toFloat();
               primu.toCharArray(u, 16);
