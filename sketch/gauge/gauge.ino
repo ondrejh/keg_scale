@@ -27,7 +27,7 @@ Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 ESP8266WiFiMulti WiFiMulti;
 
-#define WSSID "keg60B784"
+#define WSSID "keg6D98FD"
 #define WPWD "k3Gat0rr"
 
 // display
@@ -169,6 +169,7 @@ void loop() {
       err_cnt += 1;
       if (err_cnt > 5) {
         display_no_signal();
+        backlight_set_color(0, 0, 0);
         err_cnt = 5;
       }
     }
