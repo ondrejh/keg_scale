@@ -1,5 +1,5 @@
 /**
- * keg_scale v0.12 alpha
+ * keg_scale v0.20 alpha
  * 
  * done:
  *   individual device and ssid name
@@ -29,7 +29,8 @@
 
 const char* sw_version = "0.12";
 
-OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
+OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
+//OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
 
 float temperature;
 int16_t raw_temp = 0;
