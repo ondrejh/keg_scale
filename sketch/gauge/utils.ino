@@ -109,8 +109,12 @@ void backlight_set_color(uint8_t r, uint8_t g, uint8_t b) {
 
 // ------ GAUGE ------------------------------------ ///
 
-#define GAUGE_MAX 370
-#define GAUGE_MIN 260
+// version 2
+#define GAUGE_MAX 700
+#define GAUGE_MIN 330
+// version 1
+//#define GAUGE_MAX 370
+//#define GAUGE_MIN 260
 #define GAUGE_TUNE_1_4 0
 #define GAUGE_TUNE_2_4 0
 #define GAUGE_TUNE_3_4 0
