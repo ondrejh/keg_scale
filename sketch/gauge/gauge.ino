@@ -28,7 +28,8 @@ Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 ESP8266WiFiMulti WiFiMulti;
 
 //#define WSSID "keg6D98FD"
-#define WSSID "keg60B784"
+//#define WSSID "keg60B784"
+#define WSSID "kegFCADEB"
 #define WPWD "k3Gat0rr"
 
 // display
