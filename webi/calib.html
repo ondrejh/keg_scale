@@ -22,7 +22,7 @@
                 url: url,
                 dataType: 'json',
                 success: (function(data) {
-                    var s = '<tr><th>Snímač</th><th>' + data.primary_unit + '</th></tr>';
+                    var s = '<tr><th>Snímač</th><th>' + data.primary_unit + '</th><th>Akce</th></tr>';
                     var cnt = 1;
                     $.each( data.calib , function(key, value) {
                         s += '<tr><td>' + value + '</td><td>' + key + '</td><td><button id="delcal" value="' + cnt + '">Smaž</button></td></tr>';
@@ -47,16 +47,16 @@
     </script>
 </head>
 
-<body onload="load();">
+<body onload="load();" class="b-calib">
     <main>
         <div class="container">
             
             <article>
                 <div class="top">
                     <h1>Kalibrace<span id='status'></span></h1>
-                    <p class="weight">
-                        Snímač: <strong><span class='raw'>---</span></strong>
-                        , Váha: <strong><span class='units'>---</span></strong> <span class='uprim'>units</span>
+                    <p class="weight weight-calib no-temp">
+                        Snímač: <strong><span class='raw'>---</span></strong><br />
+                        Váha: <strong><span class='units'>---</span></strong> <span class='uprim'>units</span>
                     </p>
                 </div>
                 <p class="line">
@@ -69,14 +69,17 @@
                 <h2>Kalibrační tabulka</h2>
                 <table id='clbtab' class="table">
                 </table>
-                <p class="btns"><button id='done' class="btn">Hotovo</button></p>
+                <p class="btns">
+                    <button id='done' class="btn">Hotovo</button>
+                    <button id='cancel' class="btn">Zpět</button>
+                </p>
             </article>
 
         </div>
     </main>
     
     <script>
-        $( "#done" ).click(function() {
+        $( "#done, #cancel" ).click(function() {
            window.location.href = 'index.html';
         });
         $( "#setcal" ).click(function() {

@@ -27,7 +27,7 @@
 
 #include "webi.h"
 
-const char* sw_version = "0.12";
+const char* sw_version = "0.2";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)

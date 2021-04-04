@@ -31,7 +31,7 @@
                         keg=false;
 						$('#keg_title').html(('name' in data.keg)?data.keg.name:'Odražení sudu');
 						if ('left' in data.keg) {
-							$('#keg_left_label').html(', Zbývá: ');
+							$('#keg_left_label').html('Zbývá: ');
 							$('#keg_left').html(data.keg.left);
 							$('#usec').html(' ' + secunit);
 						}
@@ -41,6 +41,7 @@
 							$('#usec').html('');
 						}
                         $('#begin_keg').html('Odrazit a ukončit');
+                        $('#begin_keg').addClass('finish');
                         $('#keg_name_line').hide();
                         $('#keg_volume_line').hide();
                     } else {
@@ -52,6 +53,8 @@
                         $('#begin_keg').html('Narazit teď');
                         $('#keg_name_line').show();
                         $('#keg_volume_line').show();
+                        $('#keg_volume_line .usec').text('piv');
+                        $('.top .weight').addClass('pt-big');
                     }
                 }),
                 error: (function() {
@@ -71,8 +74,8 @@
             
             <div class="top">
                 <h1><span id='keg_title'>Nový sud</span><span id='status'></span></h1>
-                <p class="weight">
-                    Váha: <span id='units'>---</span> <span class='uprim'>units</span>
+                <p class="weight weight-keg no-temp">
+                    Váha: <span id='units'>---</span> <span class='uprim'>units</span><br />
                     <span id='keg_left_label'></span><strong><span id='keg_left'></span></strong><span id='usec'></span>
                 </p>
             </div>
@@ -80,7 +83,7 @@
                 <label for="keg_name">Budeme mu říkat</label>
                 <input id='keg_name' class="field" placeholder='Můj soudek 12&deg'/>
             </p>
-            <p class="lline" id='keg_volume_line'>
+            <p class="line" id='keg_volume_line'>
                 <label for="keg_volume">Jeho obsah je</label>
                 <input type='number' class="field" id='keg_volume'/> <span class='usec'></span>
             </p>
