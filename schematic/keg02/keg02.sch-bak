@@ -956,7 +956,7 @@ $EndComp
 Wire Wire Line
 	5100 3000 5100 3100
 Text Label 6200 3100 0    50   ~ 0
-PWIC2
+PWIC3
 Wire Wire Line
 	6800 3900 6900 3900
 $Comp
