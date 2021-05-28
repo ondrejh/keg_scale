@@ -393,7 +393,7 @@ $EndComp
 Wire Wire Line
 	8100 1800 8100 1900
 $Comp
-L Regulator_Linear:AP2112K-3.3 IC3
+L keg02-rescue:AP2112K-3.3-Regulator_Linear IC3
 U 1 1 5FFBFBAB
 P 4400 1600
 F 0 "IC3" H 4400 1942 50  0000 C CNN
