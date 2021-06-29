@@ -8,7 +8,7 @@ void handleRoot() {
 
 void handleKegstart() {
   digitalWrite(WLED, ON);
-  server.send(200, "text/html", keg_html);
+  server.send(200, "text/html", keg_bin);
   digitalWrite(WLED, OFF);  
 }
 
@@ -263,7 +263,7 @@ void handleList() {
   int p = 0;
   p += sprintf(msg, "\r");
   p += sprintf(&msg[p], kegs);
-  server.send(200, "text/html", msg);
+  server.send(200, "text/plain", msg);
 }
 
 void handleNotFound() {
