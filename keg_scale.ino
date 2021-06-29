@@ -1,14 +1,16 @@
 
 /**
- * keg_scale v0.20 alpha
+ * keg_scale v0.30 alpha (whispler)
  * 
  * done:
+ *   whisplerign on kegs name
  *   individual device and ssid name
  *   new webi using post
  *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  *   store config data
  * 
  * todo:
+ *   save 10 last keg names to whispler
  *   connect to local wifi
  */
 
