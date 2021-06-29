@@ -1,0 +1,48 @@
+/*
+Konstanty design
+--------------------------------------------------- */
+
+// BARVY
+$brand-color: 			#feda3e; 		// brandova barva
+$html-bg:				#fff;	 	    // barva pozadi html
+$body-bg:				#fff;			// barva pozadi body
+$text-color:			#222; 			// barva textu
+$heading-color:			$text-color;	// barva nadpisu
+$link-color:			$brand-color;	// barva odkazu
+$link-color-hover:		#000;			// hover odkazu
+
+$border-color:			#bbb;		    // podklad formulare, border vsude
+$warning:				#d50014; 		// warning cervena - formular
+$succes:				#d4edda; 		// success zelena - formular
+
+// FONTY
+$font-family:			'Tahoma', sans-serif;
+$font-family-heading:	$font-family;
+$font-size:				18px;			// velikost pisma body
+$line-height:			1.75;			// vychozi line-height
+$font-weight: 			400;			// vychozi tloustka pisma
+$font-weight-heading:	700;			// tloustka pisma nadpisu
+
+// ROZMERY
+$container-width:		1024px;			// maximalni sirka containeru
+$container-padding:		15px;			// vychozi padding
+
+// CESTY
+$img-path:          	'../img/';
+
+// OSTATNI
+$box-shadow: 			0 0 30px rgba(0,0,0,0.2);
+$border-radius: 		10px;
+
+
+/*
+BREAKPOINTY
+========================================================================================================= */
+$custom-lap-start:          768px !default; 	// max velikost pro breakpoint mobil
+$custom-desk-start:         992px !default; 	// max velikost pro breakpoint tablet
+$custom-desk-wide-start:    1200px !default; 	// min velikost pro breakpoint hd
+
+$palm:                     	$custom-lap-start - 1 !default; 	// Maximalni hodnota od 1px do xxx
+$lap-and-up:                $custom-lap-start !default; 		// Minimalni hodnota pro breakpoint tablet a vyse
+$desk-and-up:               $custom-desk-start !default; 		// Minimalni hodnota pro breakpoint desktop a vyse
+$desk-wide:                 $custom-desk-wide-start !default;	// Minimalni hodnota pro sirokouhly display

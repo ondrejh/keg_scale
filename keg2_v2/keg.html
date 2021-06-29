@@ -121,6 +121,7 @@
 					else
 						return;
 				});
+                saveNewName(name);
 			}
 			else { // not keg
 				$.post( "do.php" , { del: 'yes' }, function(data, status) {
@@ -151,12 +152,40 @@
                     $('#keg_name').autocomplete({
                         source: function(request, response) {
                             var results = $.ui.autocomplete.filter(autoCompleteData, request.term);
-                            response(results.slice(0, 3)); // 10 = prvnich deset vysledku
+                            response(results.slice(0, 10)); // 10 = prvnich deset vysledku
                         }
                     });
                 }
             });
         });      
+
+        // ulozeni jmena do seznam.txt
+        function saveNewName(name) {
+            $.ajax({
+                url: 'seznam.txt',
+                dataType: 'text',
+                success: function(data) {
+                    var autoCompleteData = data.split('\r');
+                    if(data.indexOf(name) == -1) {
+                        var beers = [];
+                        for (var i = 0; i < autoCompleteData.length; i++) {
+                            beers.push('\r' + autoCompleteData[i]);
+                        }
+                        beers.push('\r' + name);
+                        beers = beers.filter(item => item != '\r');
+                        $.ajax({
+                            type: "POST",
+                            url: "save-new-beer.php",
+                            data: {data: beers}, 
+                            cache: false,
+                            success: function() {
+                                
+                            }
+                        });
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>

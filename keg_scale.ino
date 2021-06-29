@@ -189,8 +189,10 @@ void setup() {
   server.on(img_site_name, handleSite);
   
   server.on(jquery_3_name, handleJquery);
+  server.on(jquery_ui_1_name, handleJqueryUi);
   server.on("/data.json", handleData);
   server.on("/do.php", HTTP_POST, handleDo);
+  server.on("/seznam.txt", handleList);
   server.onNotFound(handleNotFound);
 
   server.begin();

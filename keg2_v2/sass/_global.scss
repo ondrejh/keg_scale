@@ -1,0 +1,576 @@
+/*
+Globalni styly
+--------------------------------------------------- */
+*,
+*:before,
+*:after	{ -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+
+html {
+	background-color: #fff;
+	min-height: 100%;
+}
+body {
+	color: $text-color;
+	font-family: $font-family;
+	max-width: 100%;
+	margin: 0 auto;
+	padding: 0;
+	background: none;
+	font-size: $font-size;
+	font-weight: $font-weight;
+	line-height: $line-height;
+	overflow-x: hidden;
+	@include bg("bg.jpg", $html-bg, no-repeat, 100% auto, 50% calc(100% - 35px));
+	background-attachment: fixed;
+	max-width: $container-width;
+
+	@include breakpoint(palm-landscape) {
+		background: #fff;
+	}
+}
+a {
+	text-decoration: underline;
+	color: $link-color;
+	transition: 0.3s all;
+
+	&:hover {
+		text-decoration: none;
+		color: $link-color-hover;
+	}
+}
+p {
+	margin: 0 0 1.5em;
+}
+img {
+	max-width: 100%;
+}
+strong,
+th {
+	font-weight: 700;
+}
+blockquote {
+	border-left: 10px solid $border-color;
+	margin: 0 0 1.5em;
+	padding: 5px 0 5px 15px;
+
+	&:before {
+		color: lighten($text-color, 40);
+		content: '\201D';
+		font-family: Arial;
+		font-size: 4em;
+		line-height: 0.1em;
+		margin-right: 10px;
+		vertical-align: -0.3em;
+	}
+}
+
+
+%cf:after {
+	content: '';
+	display: block;
+	clear: both;
+}
+.hidden {
+	display: none !important;
+}
+
+// selection
+::-moz-selection {
+    color: #fff;
+    background: $brand-color;
+}
+::selection {
+    color: #fff;
+    background: $brand-color;
+}
+
+/*
+Container a jeho modifikace
+--------------------------------------------------- */
+main {
+	@extend %cf;
+}
+.container {
+	@extend %cf;
+	max-width: $container-width;
+	padding: $container-padding;
+	padding-bottom: 35px;
+	margin: 0 auto;
+	min-height: 100vh;
+	position: relative;
+
+	&:after { // sedy pruh dole
+		content: '';
+		display: block;
+		height: 35px;
+		border-top: 1px solid $border-color;
+		background-color: #ebebeb;
+		position: fixed;
+		bottom: 0;
+		right: 0;
+		left: 0;
+	}
+}
+
+/*
+Nadpisy
+--------------------------------------------------- */
+h1,h2,h3,h4,h5,h6 {
+	color: $heading-color;
+	font-family: $font-family-heading;
+	font-weight: $font-weight-heading;
+	margin: 0 0 0.75em;
+}
+h1 {
+	font-size: 28px;
+	margin-bottom: 0.75rem;
+	line-height: 1;
+}
+h2 {
+	font-size: 20px;
+	line-height: 1.2632;
+
+	@include breakpoint($lap-and-up) {
+		font-size: 38px;
+	}
+}
+h3 {
+	font-size: 18px;
+
+	@include breakpoint($lap-and-up) {
+		font-size: 28px;
+	}
+}
+h4 {
+	font-size: 18px;
+}
+h5 {
+	font-size: 16px;
+}
+
+
+/*
+Seznamy
+--------------------------------------------------- */
+main ul {
+	margin: 0 0 1.5em;
+	list-style: none;
+	padding-left: 0;
+
+	li {
+		margin-left: 0;
+		padding-left: 38px;
+		@include svg-bg('li', transparent, 0 8px, 17px 11px);
+		margin-bottom: 10px;
+	}
+	ul {
+		margin: 15px 0;
+	}
+}
+
+
+/*
+Tabulka
+--------------------------------------------------- */
+.table,
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0 0 25px;
+	border: 2px solid $border-color;
+	background-color: #fff;
+	font-size: 16px;
+
+	th, td {
+		text-align: left;
+		vertical-align: top;
+		padding: 3px 8px;
+		border: 1px solid $border-color;
+		background-color: #fff;
+		font-size: 15px;
+
+		&:nth-child(2) {
+			text-align: right;
+		}
+		&:nth-child(3) {
+			text-align: center;
+		}
+	}
+	th {
+		font-weight: 700;
+	}
+}
+
+
+/*
+Hlavicka
+--------------------------------------------------- */
+.top {
+	@extend %cf;
+	margin: -15px -15px 15px;
+	padding: 0;
+	display: flex;
+	justify-items: center;
+	@include bg("bg.jpg", #fff, no-repeat, 100% auto, 50% 10%);
+	border-bottom: 2px solid $border-color;
+	min-height: 50px;
+	overflow: hidden;
+
+	h1 {
+		margin: auto 0;
+		padding-left: 15px;
+		color: $brand-color;
+		text-shadow: 1px 1px 2px #000;
+
+		#status {
+			font-weight: 400;
+			color: red;
+			font-size: 16px;
+			text-shadow: none;
+		}
+	}
+	p {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.25;
+		background-color: #fff;
+		border-radius: 30px 0 0 30px;
+		border-left: 1px solid $border-color;
+		box-sizing: border-box;
+		padding: 10px 15px;
+		text-align: center;
+
+		@include breakpoint(575px) {
+			padding-left: 25px;
+		}
+
+		&.weight {
+			border-right: 1px solid $border-color;
+			margin-right: -1px;
+			box-shadow: -3px 0 5px rgba(0,0,0,0.2);
+
+			&.no-temp {
+				margin-left: auto;
+			}
+			&.pt-big {
+				padding-top: 16px;
+			}
+			#units {
+				font-weight: 700;
+			}
+		}
+		&.temp {
+			margin-left: auto;
+			margin-right: -25px;
+			padding-right: 35px;
+
+			@include breakpoint(575px) {
+				padding-right: 45px;
+			}
+
+			#temp {
+				font-weight: 700;
+				color: limegreen;
+
+				&.highTemp {
+					color: $warning;
+				}
+			}
+		}
+	}
+}
+
+
+/*
+Tlacitka a formular
+--------------------------------------------------- */
+.form {
+	margin-bottom: 15px;
+	padding: 15px;
+	background-color: #fff;
+	border-radius: $border-radius;
+	border: 1px solid $border-color;
+
+	p {
+		margin-bottom: 15px;
+
+		&:last-of-type {
+			margin-bottom: 0;
+		}
+	}
+	& + .btns {
+		margin-top: 30px;
+	}
+}
+.line {
+
+	label {
+		display: block;
+		font-size: 16px;
+	}
+}
+.field {
+	@include wh(100%, 40px);
+	background-color: #fff;
+	border: 1px solid $border-color;
+	border-radius: $border-radius;
+	padding: 5px 10px;
+	line-height: 1.25;
+	font-size: $font-size;
+	color: $text-color;
+	box-shadow: none;
+	outline: none !important;
+
+	&#keg_volume,
+	&#clbin {
+		width: calc(100% - 40px);
+	}
+	&:hover {
+		border-color: darken($border-color, 5%);
+	}
+	&:focus,
+	&:active {
+		border-color: darken($border-color, 10%);
+		box-shadow: 0 0 0 1px darken($border-color, 10%);
+	}
+}
+.btns {
+	@extend %cf;
+	text-align: center;
+	margin: 0;
+
+	& + h2,
+	& + .line {
+		margin-top: 30px;
+	}
+	.btn {
+		//min-width: 140px;
+		display: inline-block;
+		margin: 0 10px 20px;
+
+		&:last-of-type {
+			margin-bottom: 0;
+		}
+	}
+}
+.btn {
+	background-color: $brand-color;
+	color: $heading-color;
+	cursor: pointer;
+	font-weight: 700;
+	font-size: 18px;
+	border-radius: $border-radius;
+	padding: 10px 20px;
+	text-align: center;
+	border: 2px solid darken($brand-color, 15%);
+	line-height: 1;
+	outline: none !important;
+	box-shadow: 0 0 0 5px #fff;
+
+	&:hover,
+	&:focus,
+	&:active {
+		color: $heading-color;
+		background-color: darken($brand-color, 15%);
+	}
+	&#calibrate,
+	&#wifiset {
+		@include abs-pos(auto 15px 5px auto);
+		position: fixed;
+		padding: 5px;
+		font-weight: 400;
+		background: none;
+		border: none;
+		z-index: 10;
+		font-size: 15px;
+		text-decoration: underline;
+		width: auto;
+		min-width: 20px;
+		display: inline-block;
+		margin: 0;
+		color: #555;
+		box-shadow: none;
+
+		&:hover,
+		&:focus,
+		&:active {
+			background: none;
+			border: none;
+			text-decoration: none;
+		}
+	}
+	&#wifiset {
+		right: auto;
+		left: 15px;
+	}
+	&.new-keg {
+		margin-bottom: 0;
+		margin-top: calc((50vh - 30px)/ 2);
+		animation: 2s pulse linear infinite;
+	}
+	&.finish {
+		margin-top: calc((50vh - 60px)/ 2);
+	}
+}
+#delcal {
+	cursor: pointer;
+	border: 1px solid #999;
+	border-radius: $border-radius / 2;
+	padding: 3px 15px;
+	color: $text-color;
+	font-family: $font-family;
+	font-size: 14px;
+	border: 1px solid #999;
+	background-color: #ccc;
+	box-shadow: none;
+
+	&:hover,
+	&:focus,
+	&:active {
+		background-color: #999;
+	}
+}
+#cancel {
+	border-color: #999;
+	background-color: #ccc;
+
+	&:hover,
+	&:focus,
+	&:active {
+		background-color: #999;
+	}
+}
+
+/*
+Hlavni panel s cislem
+--------------------------------------------------- */
+div.keg {
+	background-color: #fff;
+	border: 2px solid $border-color;
+	border-radius: $border-radius;
+	box-shadow: $box-shadow;
+	margin-bottom: 30px;
+	text-align: center;
+	padding: 15px;
+	min-height: calc(100vh - 270px);
+	position: relative;
+	font-size: 5vw;
+
+	@include breakpoint(palm-landscape) {
+		font-size: 5vh;
+		margin-bottom: 15px;
+	}
+	@include breakpoint($desk-and-up) {
+		font-size: 26px;
+		padding-top: 30px;
+	}
+
+	&:before {
+		content: '';
+		display: block;
+		@include wh(50px);
+		@include svg-bg('barell', #fff, 0 0, 50px auto);
+		@include abs-pos(10px 10px auto auto);
+		opacity: 0.45;
+		z-index: 2;
+	}
+	&.animation {
+		animation: 1.5s tada linear;
+	}
+	h2 {
+		margin-bottom: 10px;
+		min-height: 33px;
+		position: relative;
+		z-index: 5;
+		font-size: 8vw;
+
+		@include breakpoint(palm-landscape) {
+			font-size: 8vh;
+		}
+		@include breakpoint($desk-and-up) {
+			font-size: 36px;
+		}
+	}
+	p {
+		margin-bottom: 0;
+
+		&.keg {
+
+			strong {
+				display: block;
+				font-size: 26px;
+				line-height: 1.3;
+
+				@include breakpoint(palm-landscape) {
+					display: inline;
+				}
+			}
+			#keg_left { // pole s cislem
+				font-size: 30vw;
+
+				@include breakpoint(palm-landscape) {
+					font-size: 20vh;
+					line-height: 1;
+				}
+				@include breakpoint($desk-and-up) {
+					font-size: 130px;
+				}
+			}
+		}
+	}
+}
+
+
+/*
+Naseptavac
+--------------------------------------------------- */
+.ui-widget.ui-widget-content {
+	border: 1px solid $border-color;
+	border-radius: $border-radius;
+	list-style: none;
+	background-color: #fff;
+	margin: 0;
+	padding: 5px 10px;
+	max-width: calc(100vw - 30px);
+
+	.ui-menu-item {
+		padding: 0;
+		margin: 0;
+		background: none;
+	}
+}
+
+
+/*
+Animace
+--------------------------------------------------- */
+@keyframes tada {
+   0% 					{ transform: scale(1); }
+   10%, 20% 			{ transform: scale(0.9) rotate(-3deg); }
+   30%, 50%, 70%, 90% 	{ transform: scale(1.1) rotate(3deg); }
+   40%, 60%, 80% 		{ transform: scale(1.1) rotate(-3deg); }
+   100% 				{ transform: scale(1) rotate(0); }
+}
+@keyframes pulse {
+	0%, 50%, 100% 		{ transform: scale(1); }
+	25% 				{ transform: scale(1.05); }
+	75% 				{ transform: scale(0.95); }
+}
+
+
+
+/*
+Stranky config, calib
+--------------------------------------------------- */
+.b-config,
+.b-calib {
+	background-position: 50% 100%;
+
+	.container {
+		padding-bottom: 15px;
+
+		&:after {
+			display: none;
+		}
+	}
+}

@@ -91,6 +91,12 @@ void handleJquery() {
   digitalWrite(WLED, OFF);
 }
 
+void handleJqueryUi() {
+  digitalWrite(WLED, ON);
+  server.send(200, "application/javascript", jquery_ui_1_bin, sizeof(jquery_ui_1_bin));
+  digitalWrite(WLED, OFF);
+}
+
 void handleData() {
   digitalWrite(WLED, ON);
 
@@ -247,6 +253,16 @@ void handleDo() {
   }
 
   sprintf(msg, res ? "OK" : "ERROR");
+  server.send(200, "text/html", msg);
+}
+
+const char* kegs = "Krakonoš 11°\rPrimátor 11°\rKrakonoš 10°\rKrakonoš 12°\rSvijany 11°\rRadegast 12°\rBernard 11°\rPrimátor 12°";
+
+void handleList() {
+  char msg[512];
+  int p = 0;
+  p += sprintf(msg, "\r");
+  p += sprintf(&msg[p], kegs);
   server.send(200, "text/html", msg);
 }
 
