@@ -20,6 +20,41 @@ void set_calib_default(calib_t *cal) {
   bubble_calib();
 }
 
+// set default keg list
+void set_keglist_default(keglist_t *keglist) {
+  sprintf(keglist->kegs, DEFAULT_KEG_LIST, strlen(DEFAULT_KEG_LIST));
+}
+
+// add keg to list
+void add_keg_to_list(char *keg, keglist_t *keglist) {
+  int pbeg=0, p=0;
+  char newlist[KEG_LIST_MAX_LENGTH];
+  p = sprintf(newlist, keg, strlen(keg));
+  p += sprintf(&newlist[p], "\n", 1);
+  for (int i=1; i<KEG_LIST_MAX_LENGTH; i++) {
+    char c = keglist->kegs[i];
+    if ((c == '\n') || (c == '\0')) {
+      int klen = i-pbeg;
+      char kegn[KEG_LABEL_MAX + 1];
+      memcpy(kegn, &keglist->kegs[pbeg], klen);
+      kegn[klen] = '\0';
+      if (strncmp(keg, kegn, KEG_LABEL_MAX) == 0) {
+        return; // keg found, no need to add
+      }
+      if ((p + klen) < (KEG_LIST_MAX_LENGTH - 1)) {
+        p += sprintf(&newlist[p], kegn, strlen(kegn));
+        p += sprintf(&newlist[p], "\n", 1);
+      }
+      pbeg = i+1;
+    }
+    if (c == '\0')
+      break;
+  }
+  newlist[p-1] = '\0';
+  memcpy(keglist->kegs, newlist, p);
+  int ret = eesave(EEPROM_KEGLIST_ADDR, keglist, sizeof(keglist_t));
+}
+
 // bubblesort calibration to have x axis consistent
 void bubble_calib(void) {
   for (int i=1; i<calib.p; i++) {

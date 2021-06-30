@@ -152,6 +152,8 @@ void handleDo() {
       eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
       // OK
       res = true;
+      // add new keg to list (for the whispler)
+      add_keg_to_list(keg_name, &keglist);
     }
   }
   
@@ -256,13 +258,11 @@ void handleDo() {
   server.send(200, "text/html", msg);
 }
 
-const char* kegs = "Krakonoš 11°\rPrimátor 11°\rKrakonoš 10°\rKrakonoš 12°\rSvijany 11°\rRadegast 12°\rBernard 11°\rPrimátor 12°";
-
 void handleList() {
   char msg[512];
   int p = 0;
-  p += sprintf(msg, "\r");
-  p += sprintf(&msg[p], kegs);
+  p += sprintf(&msg[p], keglist.kegs);
+  p += sprintf(&msg[p], "\n");
   server.send(200, "text/plain", msg);
 }
 
