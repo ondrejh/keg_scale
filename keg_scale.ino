@@ -1,17 +1,17 @@
 
 /**
- * keg_scale v0.30 alpha (whispler)
+ * keg_scale v0.30 (whispler)
  * 
  * done:
- *   whisplerign on kegs name
  *   individual device and ssid name
  *   new webi using post
  *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  *   store config data
+ *   whisplerign on kegs name
+ *   save at least 10 last keg names for whispler
  * 
  * todo:
- *   save 10 last keg names to whispler
- *   connect to local wifi
+ *   connect to local wifi (wifi multi)
  */
 
 #include "HX711.h"
@@ -147,11 +147,6 @@ void setup() {
   if (eeload(EEPROM_KEGLIST_ADDR, &keglist, sizeof(keglist)) < 0)
     set_keglist_default(&keglist);
 
-  Serial.print("keglist");
-  Serial.println(sizeof(keglist));
-  Serial.print("keg");
-  Serial.println(sizeof(keg));
-
   // if keg initialize live data
   if (KEG) {
     keg_full = interpolate(keg.fullraw);
@@ -210,7 +205,7 @@ void setup() {
   server.on(jquery_ui_1_name, handleJqueryUi);
   server.on("/data.json", handleData);
   server.on("/do.php", HTTP_POST, handleDo);
-  server.on("/seznam.txt", handleList);
+  server.on("/keglist.txt", handleList);
   server.onNotFound(handleNotFound);
 
   server.begin();
