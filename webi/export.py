@@ -53,6 +53,8 @@ with open('../webi.h', 'w') as fout:
     fout.write(import_html('index.html'))
     print('  Embed html file calib.html')
     fout.write(import_html('calib.html'))
+    #print('  Embed html file keg.html')
+    #fout.write(import_html('keg.html'))
     print('  Embed html file config.html')
     fout.write(import_html('config.html'))
     print('  Embed binary css file style.css')

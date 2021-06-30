@@ -145,13 +145,13 @@
                 url: 'seznam.txt',
                 dataType: 'text',
                 success: function(data) {
-                    var autoCompleteData = data.split('\r');
+                    var autoCompleteData = data.split('\n');
                     autoCompleteData.sort();
                     console.log(autoCompleteData); // DEL
                     $('#keg_name').autocomplete({
                         source: function(request, response) {
                             var results = $.ui.autocomplete.filter(autoCompleteData, request.term);
-                            response(results.slice(0, 3)); // 10 = prvnich deset vysledku
+                            response(results.slice(0, 10)); // 10 = prvnich deset vysledku
                         }
                     });
                 }
