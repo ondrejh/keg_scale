@@ -8,7 +8,7 @@ void handleRoot() {
 
 void handleKegstart() {
   digitalWrite(WLED, ON);
-  server.send(200, "text/html", keg_html);
+  server.send(200, "text/html", keg_bin);
   digitalWrite(WLED, OFF);  
 }
 
@@ -91,6 +91,12 @@ void handleJquery() {
   digitalWrite(WLED, OFF);
 }
 
+void handleJqueryUi() {
+  digitalWrite(WLED, ON);
+  server.send(200, "application/javascript", jquery_ui_1_bin, sizeof(jquery_ui_1_bin));
+  digitalWrite(WLED, OFF);
+}
+
 void handleData() {
   digitalWrite(WLED, ON);
 
@@ -130,7 +136,7 @@ void handleDo() {
   float keg_vol_float;
   bool res = false;
 
-  if (server.hasArg("keg") && server.hasArg("vol")) {
+  if (server.hasArg("keg") && server.hasArg("vol")) { // new keg
     server.arg("keg").toCharArray(keg_name, KEG_LABEL_MAX);
     keg_name[KEG_LABEL_MAX] = '\0';
     server.arg("vol").toCharArray(keg_vol, 16);
@@ -146,15 +152,23 @@ void handleDo() {
       eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
       // OK
       res = true;
+      // add new keg to list (for the whispler)
+      add_keg_to_list(keg_name, &keglist);
     }
   }
   
-  else if (server.hasArg("del") && (server.arg("del") == "yes")) {
+  else if (server.hasArg("del") && (server.arg("del") == "yes")) { // das ende, slus, vypito
     keg.keg = false;
     // save to eeprom
     eesave(EEPROM_KEG_ADDR, &keg, sizeof(keg));
     // OK
     res = true;
+  }
+
+  else if (server.hasArg("list")) { // add keg name to list (to restore saved list)
+    server.arg("keg").toCharArray(keg_name, KEG_LABEL_MAX);
+    keg_name[KEG_LABEL_MAX] = '\0';
+    add_keg_to_list(keg_name, &keglist);
   }
 
   else if (server.hasArg("addc")) { // add calibration row
@@ -163,7 +177,7 @@ void handleDo() {
     int32_t raw;
     server.arg("addc").toCharArray(sval, 16);
 
-    if (server.hasArg("rawc")) {
+    if (server.hasArg("rawc")) { // with value (to restore saved calibration)
       char rval[16];
       server.arg("rawc").toCharArray(rval, 16);
       if (sscanf(rval, "%i", &raw) != 1) {
@@ -248,6 +262,14 @@ void handleDo() {
 
   sprintf(msg, res ? "OK" : "ERROR");
   server.send(200, "text/html", msg);
+}
+
+void handleList() {
+  char msg[512];
+  int p = 0;
+  p += sprintf(&msg[p], keglist.kegs);
+  p += sprintf(&msg[p], "\n");
+  server.send(200, "text/plain", msg);
 }
 
 void handleNotFound() {

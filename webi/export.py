@@ -53,8 +53,8 @@ with open('../webi.h', 'w') as fout:
     fout.write(import_html('index.html'))
     print('  Embed html file calib.html')
     fout.write(import_html('calib.html'))
-    print('  Embed html file keg.html')
-    fout.write(import_html('keg.html'))
+    #print('  Embed html file keg.html')
+    #fout.write(import_html('keg.html'))
     print('  Embed html file config.html')
     fout.write(import_html('config.html'))
     print('  Embed binary css file style.css')
@@ -65,6 +65,9 @@ with open('../webi.h', 'w') as fout:
     fout.write(import_bin('img/barell.svg', end=None))
     print('  Embed binary img/bg.jpg')
     fout.write(import_bin('img/bg.jpg', end=None))
+
+    print('  Embed html file as binary keg.html')
+    fout.write(import_bin('keg.html', end=None))
 
     print('  Embed binary img/favicon-16x16.png')
     fout.write(import_bin('img/favicon-16x16.png', end=None))
@@ -81,5 +84,7 @@ with open('../webi.h', 'w') as fout:
     
     print('  Embed binary file jquery-3.5.1.min.js')
     fout.write(import_bin('jquery-3.5.1.min.js', end=None))
+    print('  Embed binary file jquery-ui-1.12.1.min.js')
+    fout.write(import_bin('jquery-ui-1.12.1.min.js', end=None))
     fout.write('#endif __WEBI_H__\n')
     print('Done')

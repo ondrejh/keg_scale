@@ -1,14 +1,17 @@
+
 /**
- * keg_scale v0.20 alpha
+ * keg_scale v0.30 (whispler)
  * 
  * done:
  *   individual device and ssid name
  *   new webi using post
  *   allow calib save - restore (do.php?addc=xx&rawc=yy)
  *   store config data
+ *   whisplerign on kegs name
+ *   save at least 10 last keg names for whispler
  * 
  * todo:
- *   connect to local wifi
+ *   connect to local wifi (wifi multi)
  */
 
 #include "HX711.h"
@@ -27,7 +30,7 @@
 
 #include "webi.h"
 
-const char* sw_version = "0.2";
+const char* sw_version = "0.3";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
@@ -53,7 +56,7 @@ uint32_t mess_ptr = 0;
 int32_t scale_avg = 0;
 float scale_units = 0.0;
 
-#define EEPROM_SIZE 512
+#define EEPROM_SIZE 1024
 
 // calibration data
 #define EEPROM_CALIB_ADDR 0
@@ -96,6 +99,15 @@ typedef struct {
 
 conf_t conf;
 
+#define DEFAULT_KEG_LIST "Krakonoš 11°\nPrimátor 11°\nKrakonoš 10°\nKrakonoš 12°\nSvijany 11°\nRadegast 12°\nBernard 11°\nPrimátor 12°"
+#define EEPROM_KEGLIST_ADDR (EEPROM_CONF_ADDR+2+sizeof(conf_t))
+#define KEG_LIST_MAX_LENGTH ((KEG_LABEL_MAX+1)*10)
+typedef struct {
+  char kegs[KEG_LIST_MAX_LENGTH];
+} keglist_t;
+
+keglist_t keglist;
+
 float keg_left;
 float keg_full;
 
@@ -132,6 +144,8 @@ void setup() {
     keg.keg = false;
   if (eeload(EEPROM_CONF_ADDR, &conf, sizeof(conf)) < 0)
     set_conf_default(&conf);
+  if (eeload(EEPROM_KEGLIST_ADDR, &keglist, sizeof(keglist)) < 0)
+    set_keglist_default(&keglist);
 
   // if keg initialize live data
   if (KEG) {
@@ -188,8 +202,10 @@ void setup() {
   server.on(img_site_name, handleSite);
   
   server.on(jquery_3_name, handleJquery);
+  server.on(jquery_ui_1_name, handleJqueryUi);
   server.on("/data.json", handleData);
   server.on("/do.php", HTTP_POST, handleDo);
+  server.on("/keglist.txt", handleList);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -217,7 +233,7 @@ void loop() {
       scale_mess[mess_ptr] = reading;
       scale_avg += scale_mess[mess_ptr++];
       mess_ptr %= MESS;
-      Serial.println(scale_avg);
+      //Serial.println(scale_avg);
       scale_units = interpolate(scale_avg);
       if (KEG) {
         keg_left = keg.volume - (keg_full - scale_units) / calib.us;
@@ -226,8 +242,8 @@ void loop() {
       else
         display_units(scale_units, calib.uprim);
     }
-    else
-      Serial.println("---");
+    //else
+      //Serial.println("---");
     
     digitalWrite(SLED, OFF);
   }

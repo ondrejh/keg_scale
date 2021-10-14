@@ -22,7 +22,8 @@ int eesave(uint32_t adr, void *obj, uint32_t siz) {
     }
     chsum = 0x00 - chsum;
     EEPROM.write( a, chsum );
-    EEPROM.commit();
+    if (!EEPROM.commit())
+      return -2;
   }
   else
     return -1; // not enough eeprom space
