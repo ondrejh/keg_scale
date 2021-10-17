@@ -184,8 +184,8 @@ void handleBuffer() {
       }
       //Serial.println("");
     }
-    screen_buffer_to_pixels(&screen_buffer);
-    pixels.show();
+    //screen_buffer_to_pixels(&screen_buffer);
+    //pixels.show();
 
     server.send(200, "text/plain", "OK\n");
   }
@@ -244,13 +244,17 @@ void handleNotFound() {
 
 void setup(void) {
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-  pixels.clear(); // Set all pixel colors to 'off'
-  pixels.show();   // Send the updated pixel colors to the hardware.
-  clear_buffer(&screen_buffer);
 
   pinMode(led, OUTPUT);
   digitalWrite(led, 0);
   Serial.begin(115200);
+
+  clear_buffer(&screen_buffer);
+  pixels.clear(); // Set all pixel colors to 'off'
+  pixels.show();   // Send the updated pixel colors to the hardware.
+  screen_buffer_to_pixels(&screen_buffer);
+  pixels.show();   // Send the updated pixel colors to the hardware.
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.println("");
@@ -281,4 +285,7 @@ void setup(void) {
 void loop(void) {
   server.handleClient();
   MDNS.update();
+
+  screen_buffer_to_pixels(&screen_buffer);
+  pixels.show();
 }
