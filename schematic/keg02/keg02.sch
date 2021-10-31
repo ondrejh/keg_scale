@@ -14,7 +14,7 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L ESP8266:ESP-12E IC1
+L keg02-rescue:ESP-12E-ESP8266 IC1
 U 1 1 5FF2C7EC
 P 4300 5800
 F 0 "IC1" H 4300 6565 50  0000 C CNN
