@@ -14,6 +14,8 @@
  *   connect to local wifi (wifi multi)
  */
 
+#define NOAP true
+
 #include "HX711.h"
 
 #include <Wire.h>
@@ -29,6 +31,18 @@
 #include <OneWire.h>
 
 #include "webi.h"
+
+#if NOAP
+  #include <WiFiClient.h>
+  #include "password.h"
+  #ifndef STASSID
+  #define STASSID "wifi_ssid"
+  #define STAPSK  "wifi_password"
+  #endif
+#endif
+
+const char *sta_ssid = STASSID;
+const char *sta_password = STAPSK;
 
 const char* sw_version = "0.3";
 
@@ -164,6 +178,16 @@ void setup() {
   WiFi.macAddress(mac);
   sprintf(ssid, "keg%02X%02X%02X", mac[3], mac[4], mac[5]);
 
+  #if NOAP
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(sta_ssid, sta_password);
+  Serial.println("");
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  #else
   // start the access point
   IPAddress ip(192, 168, 42, 1);
   IPAddress subnet(255, 255, 255, 0);
@@ -174,12 +198,13 @@ void setup() {
   Serial.println("\" started");
   Serial.print("IP address:\t");
   Serial.println(WiFi.softAPIP());
+  #endif
 
   // init scale
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   pinMode(LOADCELL_DOUT_PIN, INPUT);
 
-  if (MDNS.begin("esp8266"))
+  if (MDNS.begin(ssid))
     Serial.println("MDNS responder started");
 
   // mdns setup
@@ -312,6 +337,18 @@ void loop() {
   }
 
   // display
+  static uint32_t disp_tim = 0;
+  static int disp_state = 0;
 
-  
+  switch (disp_state) {
+    case 0:
+    break;
+    case 1:
+    break;
+    case 2:
+    break;
+    default:
+    disp_state=0;
+    break;
+  }
 }
