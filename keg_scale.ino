@@ -41,6 +41,11 @@
   #endif
 #endif
 
+#define DISP_START_TIMEOUT 10000
+#define DISP_WEIGHT_TIMEOUT 30000
+#define DISP_TEMPERATURE_TIMEOUT 5000
+#define DISP_WIFI_TIMEOUT 3000
+
 const char *sta_ssid = STASSID;
 const char *sta_password = STAPSK;
 
@@ -186,7 +191,9 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    Serial.println(" Connected");
   }
+  Serial.println(WiFi.localIP());
   #else
   // start the access point
   IPAddress ip(192, 168, 42, 1);
@@ -237,7 +244,13 @@ void setup() {
   Serial.println("HTTP server started");
 
   // display wifi connection
-  display_wifi();
+  #if NOAP
+  IPAddress dip = WiFi.localIP();
+  display_wifi(sta_ssid, dip);
+  #else
+  IPAddress dip = WiFi.softAPIP();
+  display_wifi(ssid, dip);
+  #endif
 }
 
 void loop() {
@@ -260,12 +273,12 @@ void loop() {
       mess_ptr %= MESS;
       //Serial.println(scale_avg);
       scale_units = interpolate(scale_avg);
-      if (KEG) {
-        keg_left = keg.volume - (keg_full - scale_units) / calib.us;
-        display_units(keg_left, calib.usec);
-      }
-      else
-        display_units(scale_units, calib.uprim);
+      //if (KEG) {
+      //  keg_left = keg.volume - (keg_full - scale_units) / calib.us;
+      //  display_units(keg_left, calib.usec);
+      //}
+      //else
+      //  display_units(scale_units, calib.uprim);
     }
     //else
       //Serial.println("---");
@@ -276,16 +289,17 @@ void loop() {
   // temperature
   static uint32_t temp_tim = 0;
   static int temp_state = 0;
+  //now = millis();
   switch (temp_state) {
   case 0:
-    temp_tim = millis();
+    temp_tim = now;
     ds.reset();
     ds.skip();
     ds.write(0x44,1);
     temp_state ++;
     break;
   case 1:
-    if ((millis() - temp_tim) >= 1000) {
+    if ((now - temp_tim) >= 1000) {
       byte present = ds.reset();
       byte data[9];
       ds.skip();    
@@ -325,12 +339,12 @@ void loop() {
     }
     break;
   case 2:
-    if ((millis() - temp_tim) >= 30000) {
+    if ((now - temp_tim) >= 30000) {
       temp_state = 0;
     }
     break;
   case 3:
-    if ((millis() - temp_tim) >= 1200) {
+    if ((now - temp_tim) >= 1200) {
       temp_state = 0;
     }
     break;
@@ -339,16 +353,71 @@ void loop() {
   // display
   static uint32_t disp_tim = 0;
   static int disp_state = 0;
+  static int disp_update = 0;
+  static uint32_t disp_timeout = DISP_START_TIMEOUT;
+  static uint32_t last_scale_units = 0;
+  if ((now - disp_tim) >= disp_timeout) {
+    disp_tim = now;  
+    switch (disp_state) {
+      case 0:
+        // switch to "weight"
+        disp_state ++;
+        disp_update = 1;
+        disp_timeout = DISP_WEIGHT_TIMEOUT;
+        last_scale_units = 0;
+      break;
+      case 1:
+        // switch to "temperature"
+        disp_state ++;
+        if (temperature_valid) {
+          disp_timeout = DISP_TEMPERATURE_TIMEOUT;
+          display_temp(raw_temp * 10 / 16);
+        }
+        else
+          disp_timeout = 0;
+        disp_update = 0;
+      break;
+      case 2:
+        // switch to "weight"
+        disp_state ++;
+        disp_timeout = DISP_WEIGHT_TIMEOUT;
+        last_scale_units = 0;
+        disp_update = 1;
+      break;
+      case 3:        
+      default:
+        // switch to "network"
+        disp_timeout = DISP_WIFI_TIMEOUT;
+        disp_state = 0;
+        disp_update = 0;
+        {
+          #if NOAP
+          IPAddress ip = WiFi.localIP();
+          display_wifi(sta_ssid, ip);
+          #else
+          IPAddress ip = WiFi.softAPIP();
+          display_wifi(ssid, ip);
+          #endif
+        }
+      break;
+    }
+  }
 
-  switch (disp_state) {
-    case 0:
+  switch (disp_update) {
+    case 0: // network & temp (static - no update)
     break;
-    case 1:
-    break;
-    case 2:
+    case 1: // weight
+      if (last_scale_units != scale_units) {
+        if (KEG) {
+          keg_left = keg.volume - (keg_full - scale_units) / calib.us;
+          display_units(keg_left, calib.usec);
+        }
+        else
+          display_units(scale_units, calib.uprim);
+        last_scale_units = scale_units;
+      }
     break;
     default:
-    disp_state=0;
     break;
   }
 }

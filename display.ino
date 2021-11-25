@@ -36,7 +36,7 @@ void display_raw_scale(int32_t raw) {
   display.display();  
 }
 
-void display_wifi() {
+void display_wifi(const char* ssid, IPAddress ip) {
   display.clearDisplay();
   display.setTextSize(1);      // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE); // Draw white text
@@ -44,7 +44,7 @@ void display_wifi() {
   
   char buff[32];
   int blen;
-  IPAddress ip = WiFi.softAPIP();
+  //IPAddress ip = WiFi.softAPIP();
   sprintf(buff, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
   blen = strlen(buff);
   display.setCursor(64 - blen*3, 20);     // Start at top-left corner
@@ -54,6 +54,36 @@ void display_wifi() {
   blen = strlen(buff);
   display.setCursor(64 - blen*3, 4);     // Start at top-left corner
   display.write(buff);  
+
+  display.display();
+}
+
+void display_temp(int temp) {
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setTextSize(3);
+  
+  char buff[16];
+  int blen;
+  int t = temp / 10;
+  int dt;
+  if (temp >= 0)
+    dt = temp - t * 10;
+  else
+    dt = -temp + t * 10;
+  if ((t >= 100) || (t <= -10))
+    sprintf(buff, "%d C", t);
+  else
+    sprintf(buff, "%d.%01d C", t, dt);
+  blen = strlen(buff);
+  int xs = 64 - blen*9;
+  display.setCursor(xs, 10);     // Start at top-left corner
+  display.print(buff);
+
+  display.setTextSize(2);
+  display.setCursor(xs + blen*18 - 32, 5);
+  display.print("o");
 
   display.display();
 }
