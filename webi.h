@@ -259,50 +259,34 @@ const char *config_html PROGMEM = "\
     <script>\n\
         var keg = false;\n\
         function load() {\n\
-            var url = \"data.json\";\n\
-            $.ajax({\n\
-                url: url,\n\
-                dataType: 'json',\n\
-                success: (function(data) {\n\
-                    //$(\"#status\").text('');\n\
-                    if ( 'dkey' in data )\n\
-						document.getElementById(\"device_key\").value = data.dkey;\n\
-                }),\n\
-                error: (function() {\n\
-                    //$(\"#status\").text(' ( offline )');\n\
-                }),\n\
-                complete: (function() {\n\
-                    //setTimeout(function() { load(); }, 500);\n\
-                }),\n\
-                timeout: 3000\n\
-            });\n\
-            $.ajax({\n\
-				url: \"config.json\",\n\
-				dataType: 'json',\n\
-				success: (function(data) {\n\
-					if ( 'wssid' in data )\n\
-						document.getElementById(\"wifi_ssid\").value = data.wssid;\n\
-					if ( 'wpwd' in data )\n\
-						document.getElementById(\"wifi_pwd\").placeholder = data.wpwd ? \"******\" else \"\";\n\
-			});\n\
-        }\n\
+        	var url = \"conf.json\";\n\
+		$.ajax({\n\
+			url: url,\n\
+			dataType: 'json',\n\
+			success: (function(data) {\n\
+				if ( 'wssid' in data ) {\n\
+					document.getElementById(\"wifi_ssid\").value = data.wssid;\n\
+					//document.getElementById(\"wifi_pwd\").placeholder = \"******\";\n\
+				}\n\
+			})});\n\
+	}\n\
         function save(geto) {\n\
-			var gkeys = Object.keys(geto)\n\
-			var glen = gkeys.length;\n\
-			if (glen === 0) {\n\
-				alert('Není co nastavovat!'); }\n\
-			else {\n\
-				$.post( 'do.php', geto, function(data, status) {\n\
-					if ((status == 'success') && (data == 'OK')) {\n\
-						alert('Nastavení OK');\n\
-						load();\n\
-						//window.location.href = 'config.html';\n\
-					}\n\
-					else\n\
-						return;\n\
-				});\n\
+		var gkeys = Object.keys(geto)\n\
+		var glen = gkeys.length;\n\
+		if (glen === 0) {\n\
+			alert('Není co nastavovat!'); }\n\
+		else {\n\
+			$.post( 'do.php', geto, function(data, status) {\n\
+			if ((status == 'success') && (data == 'OK')) {\n\
+				alert('Nastavení OK');\n\
+				load();\n\
+				//window.location.href = 'config.html';\n\
 			}\n\
+			else\n\
+				return;\n\
+			});\n\
 		}\n\
+	}\n\
     </script>\n\
 </head>\n\
 <body onload=\"load();\" class=\"b-config\">\n\

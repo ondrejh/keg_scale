@@ -32,24 +32,14 @@
 
 #include "webi.h"
 
-#if NOAP
-  #include <WiFiClient.h>
-  #include "password.h"
-  #ifndef STASSID
-  #define STASSID "wifi_ssid"
-  #define STAPSK  "wifi_password"
-  #endif
-#endif
+#include <WiFiClient.h>
 
 #define DISP_START_TIMEOUT 10000
 #define DISP_WEIGHT_TIMEOUT 30000
 #define DISP_TEMPERATURE_TIMEOUT 5000
 #define DISP_WIFI_TIMEOUT 3000
 
-const char *sta_ssid = STASSID;
-const char *sta_password = STAPSK;
-
-const char* sw_version = "0.3";
+const char* sw_version = "0.4";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
@@ -144,6 +134,8 @@ const char *password = "k3Gat0rr";
 
 ESP8266WebServer server(80);
 
+bool AP_Mode = true;
+
 void setup() {
   Serial.begin(115200);
 
@@ -166,6 +158,21 @@ void setup() {
   if (eeload(EEPROM_KEGLIST_ADDR, &keglist, sizeof(keglist)) < 0)
     set_keglist_default(&keglist);
 
+  // test reading conf data
+  delay(500);
+  Serial.println("Configuration");
+  Serial.println();
+  Serial.print("  SSID: ");
+  Serial.println(conf.ssid);
+  Serial.print("  WPWD: ");
+  Serial.println(conf.wpwd);
+  Serial.print("  DKEY: ");
+  Serial.println(conf.dkey);
+  Serial.print("  PIN: ");
+  Serial.println(conf.pin);
+  Serial.println();
+  delay(500);
+
   // if keg initialize live data
   if (KEG) {
     keg_full = interpolate(keg.fullraw);
@@ -178,34 +185,49 @@ void setup() {
 
   // show initial display buffer contents on the screen
   display.display();
+  display_intro();
 
   uint8_t mac[6];
   WiFi.macAddress(mac);
   sprintf(ssid, "keg%02X%02X%02X", mac[3], mac[4], mac[5]);
 
-  #if NOAP
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(sta_ssid, sta_password);
-  Serial.println("");
-  // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    Serial.println(" Connected");
+  if (conf.ssid[0] != '\0') {
+    AP_Mode = false;
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(conf.ssid, conf.wpwd);
+    // Wait for connection
+    Serial.print("Connecting WiFi ");
+    int cnt = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+      cnt ++;
+      if (cnt > 30)
+        break;
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println(" OK");
+      Serial.println(WiFi.localIP());
+    }
+    else {
+      Serial.println(" ERROR (timeout)");
+      AP_Mode = true;
+    }
   }
-  Serial.println(WiFi.localIP());
-  #else
-  // start the access point
-  IPAddress ip(192, 168, 42, 1);
-  IPAddress subnet(255, 255, 255, 0);
-  WiFi.softAPConfig(ip, ip, subnet);
-  WiFi.softAP(ssid, password);
-  Serial.print("Access Point \"");
-  Serial.print(ssid);
-  Serial.println("\" started");
-  Serial.print("IP address:\t");
-  Serial.println(WiFi.softAPIP());
-  #endif
+  
+  if (AP_Mode) {
+    // start the access point
+    WiFi.mode(WIFI_AP);
+    IPAddress ip(192, 168, 42, 1);
+    IPAddress subnet(255, 255, 255, 0);
+    WiFi.softAPConfig(ip, ip, subnet);
+    WiFi.softAP(ssid, password);
+    Serial.print("Access Point \"");
+    Serial.print(ssid);
+    Serial.println("\" started");
+    Serial.print("IP address:\t");
+    Serial.println(WiFi.softAPIP());
+  }
 
   // init scale
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
@@ -236,6 +258,7 @@ void setup() {
   server.on(jquery_3_name, handleJquery);
   server.on(jquery_ui_1_name, handleJqueryUi);
   server.on("/data.json", handleData);
+  server.on("/conf.json", handleConfData);
   server.on("/do.php", HTTP_POST, handleDo);
   server.on("/keglist.txt", handleList);
   server.onNotFound(handleNotFound);
@@ -244,13 +267,14 @@ void setup() {
   Serial.println("HTTP server started");
 
   // display wifi connection
-  #if NOAP
-  IPAddress dip = WiFi.localIP();
-  display_wifi(sta_ssid, dip);
-  #else
-  IPAddress dip = WiFi.softAPIP();
-  display_wifi(ssid, dip);
-  #endif
+  if (AP_Mode) {
+    IPAddress dip = WiFi.softAPIP();
+    display_wifi(ssid, dip);
+  }
+  else {
+    IPAddress dip = WiFi.localIP();
+    display_wifi(conf.ssid, dip);
+  }
 }
 
 void loop() {
@@ -273,15 +297,7 @@ void loop() {
       mess_ptr %= MESS;
       //Serial.println(scale_avg);
       scale_units = interpolate(scale_avg);
-      //if (KEG) {
-      //  keg_left = keg.volume - (keg_full - scale_units) / calib.us;
-      //  display_units(keg_left, calib.usec);
-      //}
-      //else
-      //  display_units(scale_units, calib.uprim);
     }
-    //else
-      //Serial.println("---");
     
     digitalWrite(SLED, OFF);
   }
@@ -391,13 +407,14 @@ void loop() {
         disp_state = 0;
         disp_update = 0;
         {
-          #if NOAP
-          IPAddress ip = WiFi.localIP();
-          display_wifi(sta_ssid, ip);
-          #else
-          IPAddress ip = WiFi.softAPIP();
-          display_wifi(ssid, ip);
-          #endif
+          if (AP_Mode) {
+            //IPAddress ip = ;
+            display_wifi(ssid, WiFi.softAPIP());
+          }
+          else {
+            IPAddress ip = WiFi.localIP();
+            display_wifi(conf.ssid, ip);
+          }
         }
       break;
     }

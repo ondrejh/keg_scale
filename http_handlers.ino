@@ -129,6 +129,27 @@ void handleData() {
   digitalWrite(WLED, OFF);
 }
 
+void handleConfData() {
+  digitalWrite(WLED, ON);
+
+  char msg[1024];
+  int p = 0;
+  p = sprintf(msg, "{");
+  if (conf.dkey[0] != '\0') 
+    p += sprintf(&msg[p], "\"dkey\": \"%s\", ", conf.dkey);
+  if (conf.ssid[0] != '\0')
+    p += sprintf(&msg[p], "\"ssid\": \"%s\", ", conf.ssid);
+  p += sprintf(&msg[p], "}");
+
+  server.sendHeader("Access-Control-Max-Age", "10000");
+  server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "application/json", msg);
+
+  digitalWrite(WLED, OFF);
+}
+
 void handleDo() {
   char msg[256];
   char keg_name[KEG_LABEL_MAX + 1];

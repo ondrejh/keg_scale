@@ -45,12 +45,12 @@ void display_wifi(const char* ssid, IPAddress ip) {
   char buff[32];
   int blen;
   //IPAddress ip = WiFi.softAPIP();
-  sprintf(buff, "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+  sprintf(buff, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
   blen = strlen(buff);
   display.setCursor(64 - blen*3, 20);     // Start at top-left corner
   display.write(buff);
 
-  sprintf(buff, "SSID: %s", ssid);
+  sprintf(buff, "%s", ssid);
   blen = strlen(buff);
   display.setCursor(64 - blen*3, 4);     // Start at top-left corner
   display.write(buff);  
@@ -85,5 +85,20 @@ void display_temp(int temp) {
   display.setCursor(xs + blen*18 - 32, 5);
   display.print("o");
 
+  display.display();
+}
+
+void display_intro() {
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.cp437(true);
+  const char* buff = "Kegator R";
+  int blen = strlen(buff);
+  int xs = 64 - blen*6;
+  display.setTextSize(2);
+  display.setCursor(xs, 12);
+  display.print(buff);
+  xs = 69 + (blen - 2) * 6;
+  display.drawCircle(xs, 19, 11, SSD1306_WHITE);
   display.display();
 }

@@ -17,50 +17,34 @@
     <script>
         var keg = false;
         function load() {
-            var url = "data.json";
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                success: (function(data) {
-                    //$("#status").text('');
-                    if ( 'dkey' in data )
-						document.getElementById("device_key").value = data.dkey;
-                }),
-                error: (function() {
-                    //$("#status").text(' ( offline )');
-                }),
-                complete: (function() {
-                    //setTimeout(function() { load(); }, 500);
-                }),
-                timeout: 3000
-            });
-            $.ajax({
-				url: "config.json",
-				dataType: 'json',
-				success: (function(data) {
-					if ( 'wssid' in data )
-						document.getElementById("wifi_ssid").value = data.wssid;
-					if ( 'wpwd' in data )
-						document.getElementById("wifi_pwd").placeholder = data.wpwd ? "******" else "";
-			});
-        }
+        	var url = "conf.json";
+		$.ajax({
+			url: url,
+			dataType: 'json',
+			success: (function(data) {
+				if ( 'wssid' in data ) {
+					document.getElementById("wifi_ssid").value = data.wssid;
+					//document.getElementById("wifi_pwd").placeholder = "******";
+				}
+			})});
+	}
         function save(geto) {
-			var gkeys = Object.keys(geto)
-			var glen = gkeys.length;
-			if (glen === 0) {
-				alert('Není co nastavovat!'); }
-			else {
-				$.post( 'do.php', geto, function(data, status) {
-					if ((status == 'success') && (data == 'OK')) {
-						alert('Nastavení OK');
-						load();
-						//window.location.href = 'config.html';
-					}
-					else
-						return;
-				});
-			}            
-		}
+		var gkeys = Object.keys(geto)
+		var glen = gkeys.length;
+		if (glen === 0) {
+			alert('Není co nastavovat!'); }
+		else {
+			$.post( 'do.php', geto, function(data, status) {
+			if ((status == 'success') && (data == 'OK')) {
+				alert('Nastavení OK');
+				load();
+				//window.location.href = 'config.html';
+			}
+			else
+				return;
+			});
+		}            
+	}
     </script>
 </head>
 <body onload="load();" class="b-config">
