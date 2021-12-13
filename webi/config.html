@@ -17,16 +17,33 @@
     <script>
         var keg = false;
         function load() {
-        	var url = "conf.json";
+		//url = "http://10.42.0.156/conf.json";
+		url = "conf.json";
 		$.ajax({
 			url: url,
 			dataType: 'json',
 			success: (function(data) {
-				if ( 'wssid' in data ) {
-					document.getElementById("wifi_ssid").value = data.wssid;
-					//document.getElementById("wifi_pwd").placeholder = "******";
+				if ( 'ssid' in data ) {
+					document.getElementById("wifi_ssid").value = data.ssid;
+					document.getElementById("wifi_pwd").placeholder = "******";
 				}
-			})});
+			}),
+			error: (function() {
+			})
+		});
+		//url2 = "http://10.42.0.156/data.json";
+		url2 = "data.json";
+		$.ajax({
+			url: url2,
+			dataType: 'json',
+			success: (function(data) {
+				if ( 'sw' in data ) {
+					document.getElementById("fw_version").innerHTML = data.sw;
+				}
+			}),
+			error: (function() {
+			})
+		});
 	}
         function save(geto) {
 		var gkeys = Object.keys(geto)
@@ -37,8 +54,8 @@
 			$.post( 'do.php', geto, function(data, status) {
 			if ((status == 'success') && (data == 'OK')) {
 				alert('Nastavení OK');
-				load();
-				//window.location.href = 'config.html';
+				//load();
+				window.location.href = 'config.html';
 			}
 			else
 				return;
@@ -54,9 +71,11 @@
                 <h1>Nastavení</h1>
             </div>
             <div class="form">
+		<h2>Síť v lokále</h2>
                 <p class="line">
                     <label for="wifi_ssid">Jméno sítě</label>
                     <input id='wifi_ssid' class="field" placeholder='pivniGaraz'/>
+
                 </p>
                 <p class="line">
                     <label for="wifi_password">Přihlašovací heslo</label>
@@ -65,8 +84,11 @@
                 <p class="btns">
                     <button id='save_ssid' class="btn">Potvrdit</button>
                 </p>
+		<p class="btns">
+		    <button id='rem_ssid' class="btn">Odstranit</button>
+		</p>
             </div>
-            <div class="form">
+    	    <!--<div class="form">
                 <p class="line">
                     <label for="device_key">Klíč zařízení</label>
                     <input  id='device_key' class="field" placeholder='abCd3456' value=''/>
@@ -74,12 +96,15 @@
                 <p class="btns">
                     <button id='save_key' class="btn">Potvrdit</button>
                 </p>
-            </div>
-            <p class="btns">
-                <button id='cancel' class="btn">Zpět</button>
-            </p>
+	    </div>-->
+	    <div class="form">
+		    <h2>Váš Kegator &reg; nyní disponuje firmwarem <span id="fw_version">neznámým</span></h2>
+	    </div>
+	    <p class="btns">
+                <button id='cancel' class="btn">Hotovo</button>
+	    </p>
 
-        </div>
+	</div>
     </main>
     
 
@@ -104,6 +129,13 @@
 				geto['dkey'] = dkey;
 			save(geto);
 		});
+
+	$( "#rem_ssid" ).click(function() {
+		var geto = {};
+		geto['wssid'] = "";
+		geto['wpwd'] = "";
+		save(geto);
+	});
 
         $( "#cancel" ).click(function() {
             window.location.href = 'index.html';

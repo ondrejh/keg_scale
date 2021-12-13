@@ -407,14 +407,10 @@ void loop() {
         disp_state = 0;
         disp_update = 0;
         {
-          if (AP_Mode) {
-            //IPAddress ip = ;
+          if (AP_Mode)
             display_wifi(ssid, WiFi.softAPIP());
-          }
-          else {
-            IPAddress ip = WiFi.localIP();
-            display_wifi(conf.ssid, ip);
-          }
+          else
+            display_wifi(conf.ssid, WiFi.localIP());
         }
       break;
     }

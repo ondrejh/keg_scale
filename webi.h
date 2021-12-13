@@ -259,16 +259,33 @@ const char *config_html PROGMEM = "\
     <script>\n\
         var keg = false;\n\
         function load() {\n\
-        	var url = \"conf.json\";\n\
+		//url = \"http://10.42.0.156/conf.json\";\n\
+		url = \"conf.json\";\n\
 		$.ajax({\n\
 			url: url,\n\
 			dataType: 'json',\n\
 			success: (function(data) {\n\
-				if ( 'wssid' in data ) {\n\
-					document.getElementById(\"wifi_ssid\").value = data.wssid;\n\
-					//document.getElementById(\"wifi_pwd\").placeholder = \"******\";\n\
+				if ( 'ssid' in data ) {\n\
+					document.getElementById(\"wifi_ssid\").value = data.ssid;\n\
+					document.getElementById(\"wifi_pwd\").placeholder = \"******\";\n\
 				}\n\
-			})});\n\
+			}),\n\
+			error: (function() {\n\
+			})\n\
+		});\n\
+		//url2 = \"http://10.42.0.156/data.json\";\n\
+		url2 = \"data.json\";\n\
+		$.ajax({\n\
+			url: url2,\n\
+			dataType: 'json',\n\
+			success: (function(data) {\n\
+				if ( 'sw' in data ) {\n\
+					document.getElementById(\"fw_version\").innerHTML = data.sw;\n\
+				}\n\
+			}),\n\
+			error: (function() {\n\
+			})\n\
+		});\n\
 	}\n\
         function save(geto) {\n\
 		var gkeys = Object.keys(geto)\n\
@@ -279,8 +296,8 @@ const char *config_html PROGMEM = "\
 			$.post( 'do.php', geto, function(data, status) {\n\
 			if ((status == 'success') && (data == 'OK')) {\n\
 				alert('Nastavení OK');\n\
-				load();\n\
-				//window.location.href = 'config.html';\n\
+				//load();\n\
+				window.location.href = 'config.html';\n\
 			}\n\
 			else\n\
 				return;\n\
@@ -296,9 +313,11 @@ const char *config_html PROGMEM = "\
                 <h1>Nastavení</h1>\n\
             </div>\n\
             <div class=\"form\">\n\
+		<h2>Síť v lokále</h2>\n\
                 <p class=\"line\">\n\
                     <label for=\"wifi_ssid\">Jméno sítě</label>\n\
                     <input id='wifi_ssid' class=\"field\" placeholder='pivniGaraz'/>\n\
+\n\
                 </p>\n\
                 <p class=\"line\">\n\
                     <label for=\"wifi_password\">Přihlašovací heslo</label>\n\
@@ -307,8 +326,11 @@ const char *config_html PROGMEM = "\
                 <p class=\"btns\">\n\
                     <button id='save_ssid' class=\"btn\">Potvrdit</button>\n\
                 </p>\n\
+		<p class=\"btns\">\n\
+		    <button id='rem_ssid' class=\"btn\">Odstranit</button>\n\
+		</p>\n\
             </div>\n\
-            <div class=\"form\">\n\
+    	    <!--<div class=\"form\">\n\
                 <p class=\"line\">\n\
                     <label for=\"device_key\">Klíč zařízení</label>\n\
                     <input  id='device_key' class=\"field\" placeholder='abCd3456' value=''/>\n\
@@ -316,12 +338,15 @@ const char *config_html PROGMEM = "\
                 <p class=\"btns\">\n\
                     <button id='save_key' class=\"btn\">Potvrdit</button>\n\
                 </p>\n\
-            </div>\n\
-            <p class=\"btns\">\n\
-                <button id='cancel' class=\"btn\">Zpět</button>\n\
-            </p>\n\
+	    </div>-->\n\
+	    <div class=\"form\">\n\
+		    <h2>Váš Kegator &reg; nyní disponuje firmwarem <span id=\"fw_version\">neznámým</span></h2>\n\
+	    </div>\n\
+	    <p class=\"btns\">\n\
+                <button id='cancel' class=\"btn\">Hotovo</button>\n\
+	    </p>\n\
 \n\
-        </div>\n\
+	</div>\n\
     </main>\n\
 \n\
 \n\
@@ -346,6 +371,13 @@ const char *config_html PROGMEM = "\
 				geto['dkey'] = dkey;\n\
 			save(geto);\n\
 		});\n\
+\n\
+	$( \"#rem_ssid\" ).click(function() {\n\
+		var geto = {};\n\
+		geto['wssid'] = \"\";\n\
+		geto['wpwd'] = \"\";\n\
+		save(geto);\n\
+	});\n\
 \n\
         $( \"#cancel\" ).click(function() {\n\
             window.location.href = 'index.html';\n\
