@@ -1,170 +1,176 @@
 // --- web server handlers ---
 
 void handleRoot() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("index_html");
-  Serial.print(" .. ");
+  //Serial.print("index_html");
+  //Serial.print(" .. ");
   server.send(200, "text/html", index_html);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleKegstart() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("keg_bin");
-  Serial.print(" .. ");
+  //Serial.print("keg_bin");
+  //Serial.print(" .. ");
   server.send(200, "text/html", keg_bin);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);  
 }
 
 void handleCalibration() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("calib_html");
-  Serial.print(" .. ");
+  //Serial.print("calib_html");
+  //Serial.print(" .. ");
   server.send(200, "text/html", calib_html);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleConfiguration() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("config_html");
-  Serial.print(" .. ");
+  //Serial.print("config_html");
+  //Serial.print(" .. ");
   server.send(200, "text/html", config_html);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleStyle() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("sass_style_bin");
-  Serial.print(" .. ");
+  //Serial.print("sass_style_bin");
+  //Serial.print(" .. ");
   server.send(200, "text/css", sass_style_bin, sizeof(sass_style_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleFavicon() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("favicon_bin");
-  Serial.print(" .. ");
+  //Serial.print("favicon_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/x-icon", favicon_bin, sizeof(favicon_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleFavicon16() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_favicon_16x16_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_favicon_16x16_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_favicon_16x16_bin, sizeof(img_favicon_16x16_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleFavicon32() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_favicon_32x32_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_favicon_32x32_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_favicon_32x32_bin, sizeof(img_favicon_32x32_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleAppleIcon() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_apple_touch_icon_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_apple_touch_icon_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_apple_touch_icon_bin, sizeof(img_apple_touch_icon_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleAndroid512() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_android_chrome_512x512_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_android_chrome_512x512_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_android_chrome_512x512_bin, sizeof(img_android_chrome_512x512_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleAndroid192() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_android_chrome_192x192_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_android_chrome_192x192_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_android_chrome_192x192_bin, sizeof(img_android_chrome_192x192_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleSite() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_site_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_site_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/png", img_site_bin, sizeof(img_site_bin));  
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleBg() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_bg_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_bg_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/jpeg", img_bg_bin, sizeof(img_bg_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleBarell() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("img_barell_bin");
-  Serial.print(" .. ");
+  //Serial.print("img_barell_bin");
+  //Serial.print(" .. ");
   server.send(200, "image/svg+xml", img_barell_bin, sizeof(img_barell_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleJquery() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("jquery_3_bin");
-  Serial.print(" .. ");
+  //Serial.print("jquery_3_bin");
+  //Serial.print(" .. ");
   server.send(200, "application/javascript", jquery_3_bin, sizeof(jquery_3_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleJqueryUi() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("jquery_ui_1_bin");
-  Serial.print(" .. ");
+  //Serial.print("jquery_ui_1_bin");
+  //Serial.print(" .. ");
   server.send(200, "application/javascript", jquery_ui_1_bin, sizeof(jquery_ui_1_bin));
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
+void jsonHeader() {
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Cache-Control", "no-cache");
+  server.sendHeader("Content-type", "application/json");
+}
+
 void handleData() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("data");
-  Serial.print(" .. ");
+  //Serial.print("data");
+  //Serial.print(" .. ");
 
   char msg[1024];
   int p = 0;
@@ -186,21 +192,18 @@ void handleData() {
   }
   p += sprintf(&msg[p], "}");
 
-  server.sendHeader("Access-Control-Max-Age", "10000");
-  server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  server.sendHeader("Access-Control-Allow-Origin", "*");
+  jsonHeader();
   server.send(200, "application/json", msg);
 
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleConfData() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("config");
-  Serial.print(" .. ");
+  //Serial.print("config");
+  //Serial.print(" .. ");
 
   char msg[1024];
   int p = 0;
@@ -211,21 +214,22 @@ void handleConfData() {
     p += sprintf(&msg[p], " \"ssid\" :\"%s\"", conf.ssid);
   p += sprintf(&msg[p], " }");
 
-  server.sendHeader("Access-Control-Max-Age", "10000");
+  jsonHeader();
+  server.send(200, "application/json", msg);
+  /*server.sendHeader("Access-Control-Max-Age", "10000");
   server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.send(200, "application/json", msg);
+  server.sendHeader("Access-Control-Allow-Origin", "*");*/
 
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
   digitalWrite(WLED, OFF);
 }
 
 void handleDo() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("do");
-  Serial.print(" .. ");
+  //Serial.print("do");
+  //Serial.print(" .. ");
 
   char msg[256];
   char keg_name[KEG_LABEL_MAX + 1];
@@ -360,14 +364,14 @@ void handleDo() {
   sprintf(msg, res ? "OK" : "ERROR");
   server.send(200, "text/html", msg);
   digitalWrite(WLED, OFF);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
 }
 
 void handleList() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("list");
-  Serial.print(" .. ");
+  //Serial.print("list");
+  //Serial.print(" .. ");
 
   char msg[512];
   int p = 0;
@@ -375,14 +379,14 @@ void handleList() {
   p += sprintf(&msg[p], "\n");
   server.send(200, "text/plain", msg);
   digitalWrite(WLED, OFF);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
 }
 
 void handleNotFound() {
-  uint32_t now = millis();
+  //uint32_t now = millis();
   digitalWrite(WLED, ON);
-  Serial.print("not_found");
-  Serial.print(" .. ");
+  //Serial.print("not_found");
+  //Serial.print(" .. ");
 
   if (server.method() == HTTP_OPTIONS) {
     server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -405,5 +409,5 @@ void handleNotFound() {
     server.send(404, "text/plain", "");
   }
   digitalWrite(WLED, OFF);
-  Serial.println(millis() - now);
+  //Serial.println(millis() - now);
 }

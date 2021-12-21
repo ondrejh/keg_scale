@@ -1,6 +1,11 @@
 
 /**
- * keg_scale v0.30 (whispler)
+ * keg_scale
+ * 
+ * versions:
+ *   v0.3 .. whispler on kegs
+ *   v0.4 .. no AP mode, display temperature and wifi info
+ *   v0.4.1 .. no-cache on json 
  * 
  * done:
  *   individual device and ssid name
@@ -39,7 +44,7 @@
 #define DISP_TEMPERATURE_TIMEOUT 5000
 #define DISP_WIFI_TIMEOUT 3000
 
-const char* sw_version = "0.4";
+const char* sw_version = "0.4.1";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
@@ -158,7 +163,7 @@ void setup() {
   if (eeload(EEPROM_KEGLIST_ADDR, &keglist, sizeof(keglist)) < 0)
     set_keglist_default(&keglist);
 
-  // test reading conf data
+  /*// test reading conf data
   delay(500);
   Serial.println("Configuration");
   Serial.println();
@@ -171,7 +176,7 @@ void setup() {
   Serial.print("  PIN: ");
   Serial.println(conf.pin);
   Serial.println();
-  delay(500);
+  delay(500);*/
 
   // if keg initialize live data
   if (KEG) {
