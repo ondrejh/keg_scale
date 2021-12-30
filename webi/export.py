@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 import re
+from subprocess import call
+
+
+FILENAME = 'webi.h'
+DESTINATION = '../sketch/keg_scale/'
 
 
 def get_var_name(fname):
@@ -45,10 +50,13 @@ def import_bin(fname, line_bytes=16, end=b'\x00'):
     return sout
 
 
-with open('../webi.h', 'w') as fout:
+HEADER = FILENAME.upper().replace('.','_')
 
-    print('Creating webi.h header file')
-    fout.write('#ifndef __WEBI_H__\n#define __WEBI_H__\n\n')
+
+with open(FILENAME, 'w') as fout:
+
+    print('Creating {} header file'.format(FILENAME))
+    fout.write('#ifndef __{0}__\n#define __{0}__\n\n'.format(HEADER))
     print('  Embed html file index.h')
     fout.write(import_html('index.html'))
     print('  Embed html file calib.html')
@@ -86,5 +94,10 @@ with open('../webi.h', 'w') as fout:
     fout.write(import_bin('jquery-3.5.1.min.js', end=None))
     print('  Embed binary file jquery-ui-1.12.1.min.js')
     fout.write(import_bin('jquery-ui-1.12.1.min.js', end=None))
-    fout.write('#endif __WEBI_H__\n')
+    fout.write('#endif __{}__\n'.format(HEADER))
     print('Done')
+
+print()
+print('Copy "webi.h" to "{}" .. '.format(DESTINATION), end='')
+print('OK' if call(['cp', 'webi.h', DESTINATION]) == 0 else 'ERROR')
+
