@@ -2,72 +2,154 @@
 <html lang="en">
 	
 <head>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Keg Gauge</title>
-    <link rel="stylesheet" type="text/css" href="sass/style.css">
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Keg Gauge</title>
+  <link rel="stylesheet" type="text/css" href="sass/style.css">
 
-    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-    <link rel="manifest" href="img/site.webmanifest">
-    <meta name="msapplication-TileColor" content="#feda3e">
-    <meta name="theme-color" content="#feda3e">
+  <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+  <link rel="manifest" href="img/site.webmanifest">
+  <meta name="msapplication-TileColor" content="#feda3e">
+  <meta name="theme-color" content="#feda3e">
+  <script src="jquery-3.5.1.min.js"></script>
+  <script>
+    var keg = false;
+    function load() {
+      url = "gauge.json";
+      $.ajax({
+        url: url,
+        dataType: 'json',
+        success: (function(gauge) {
+	  if ( 'network' in gauge ) {
+	    var network = gauge.network;
+            if ( 'ssid' in network ) {
+              document.getElementById("ssid").value = network.ssid;
+              document.getElementById("pasw").placeholder = "******";
+            }
+            if ( 'ip' in network ) {
+              document.getElementById("ip").value = network.ip;
+            }
+          }
+          if ( 'calib' in gauge ) {
+            var calib = gauge.calib;
+            document.querySelector("#g04").value = calib.g04;
+            document.querySelector(".g04_out").textContent = calib.g04;
+            document.querySelector("#g14").value = calib.g14;
+            document.querySelector(".g14_out").textContent = calib.g14;
+            document.querySelector("#g24").value = calib.g24;
+            document.querySelector(".g24_out").textContent = calib.g24;
+            document.querySelector("#g34").value = calib.g34;
+            document.querySelector(".g34_out").textContent = calib.g34;
+            document.querySelector("#g44").value = calib.g44;
+            document.querySelector(".g44_out").textContent = calib.g44;
+          }
+        }),
+        error: (function() {
+        })
+      });
+      /*url2 = "data.json";
+      $.ajax({
+        url: url2,
+        dataType: 'json',
+        success: (function(data) {
+          if ( 'sw' in data ) {
+            document.getElementById("fw_version").innerHTML = data.sw;
+          }
+        }),
+        error: (function() {
+        })
+      });*/
+    }
+    /*function save(geto) {
+      var gkeys = Object.keys(geto)
+      var glen = gkeys.length;
+      if (glen === 0) {
+        alert('Není co nastavovat!'); }
+      else {
+        $.post( 'do.php', geto, function(data, status) {
+          if ((status == 'success') && (data == 'OK')) {
+            alert('Nastavení OK');
+            //load();
+            window.location.href = 'config.html';
+          }
+          else
+            return;
+        });
+      }            
+    }*/
+  </script>
 </head>
 
-<body>
-  <h1>Kegator - Ručkový ukazatel</h1>
+<body onload="load();" class="b-config">
+  <main>
+    <div class="container">
+      <div class="top">
+        <h1>Kegator - Ručkový ukazatel</h1>
+      </div>
 
-  <div id="nastaveni_site">
-    <h2>Nastavení sítě</h2>
+      <div class="form">
+        <h2>Nastavení sítě</h2>
 
-    <table>
-      <tr><td><label for="ssid">SSID:</label></td><td><input id="ssid" name="ssid"></td></tr>
-      <tr><td><label for="pasw">Password:</label></td><td><input id="pasw" name="pasw"></td></tr>
-      <tr><td><label for="ip">IP:</label></td><td><input id="ip" name="ip"></td></tr>
-    </table>
-    <div>
-      <button id="save_ssid" class="btn">Uložit</button>
-      <button id="cancel_ssid" class="btn">Zrušit</button>
+	<table>
+          <tr>
+            <td><label for="ssid">SSID:</label></td>
+	    <td><input id="ssid" name="ssid" placeholder="kegXXX"></td>
+          </tr>
+	  <tr>
+            <td><label for="pasw">Password:</label></td>
+	    <td><input id="pasw" name="pasw" placeholder="***"></td>
+	  </tr>
+	  <tr>
+            <td><label for="ip">IP:</label></td>
+	    <td><input id="ip" name="ip" placeholder="192.168.42.1"></td>
+	  <tr>
+	</table>
+        <div>
+          <button id="save_ssid" class="btn">Uložit</button>
+          <button id="cancel_ssid" class="btn">Zrušit</button>
+        </div>
+      </div>
+
+      <div class="form">
+        <h2>Kalibrace budíku</h2>
+
+        <table>
+          <tr>
+            <td><input type="radio" id="r04" name="test_gauge" value="04"><label for="r04">Prázdný</label></td>
+            <td><input type="range" name="g04" id="g04" min="0" max="255" step="1" value="100"></td>
+            <td><output class="g04_out" for="g04"></output>
+          </tr>
+          <tr>
+            <td><input type="radio" id="r14" name="test_gauge" value="14"><label for="r14">Čtvrt</label></td>
+            <td><input type="range" name="g14" id="g14" min="0" max="255" step="1" value="120"></td>
+            <td><output class="g14_out" for="g14"></output>
+          </tr>
+          <tr>
+            <td><input type="radio" id="r24" name="test_gauge" value="24"><label for="r24">Půl</label></td>
+	    <td><input type="range" name="g24" id="g24" min="0" max="255" step="1" value="150"></td>
+	    <td><output class="g24_out" for="g24"></output>
+          </tr>
+          <tr>
+            <td><input type="radio" id="r34" name="test_gauge" value="34"><label for="r34">Tři čtvrtiny</label></td>
+	    <td><input type="range" name="g34" id="g34" min="0" max="255" step="1" value="175"></td>
+	    <td><output class="g34_out" for="g34"></output>
+          </tr>
+          <tr>
+            <td><input type="radio" id="r44" name="test_gauge" value="44"><label for="r44">Plný</label></td>
+	    <td><input type="range" name="g44" id="g44" min="0" max="255" step="1" value="200"></td>
+	    <td><output class="g44_out" for="g44"></output>
+          </tr>
+        </table>
+        <div>
+          <button id="save_calib" class="btn">Uložit</button>
+          <button id="cancel_calib" class="btn">Zrušit</button>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div id="kalibrace">
-    <h2>Kalibrace budíku</h2>
-
-    <table>
-      <tr>
-        <td><input type="radio" id="r04" name="test_gauge" value="04"><label for="r04">Prázdný</label></td>
-	<td><input type="range" name="g04" id="g04" min="0" max="255" step="1" value="100"></td>
-	<td><output class="g04_out" for="g04"></output>
-      </tr>
-      <tr>
-        <td><input type="radio" id="r14" name="test_gauge" value="14"><label for="r14">Čtvrt</label></td>
-	<td><input type="range" name="g14" id="g14" min="0" max="255" step="1" value="120"></td>
-	<td><output class="g14_out" for="g14"></output>
-      </tr>
-      <tr>
-        <td><input type="radio" id="r24" name="test_gauge" value="24"><label for="r24">Půl</label></td>
-	<td><input type="range" name="g24" id="g24" min="0" max="255" step="1" value="150"></td>
-	<td><output class="g24_out" for="g24"></output>
-      </tr>
-      <tr>
-        <td><input type="radio" id="r34" name="test_gauge" value="34"><label for="r34">Tři čtvrtiny</label></td>
-	<td><input type="range" name="g34" id="g34" min="0" max="255" step="1" value="175"></td>
-	<td><output class="g34_out" for="g34"></output>
-      </tr>
-      <tr>
-        <td><input type="radio" id="r44" name="test_gauge" value="44"><label for="r44">Plný</label></td>
-	<td><input type="range" name="g44" id="g44" min="0" max="255" step="1" value="200"></td>
-	<td><output class="g44_out" for="g44"></output>
-      </tr>
-    </table>
-    <div>
-      <button id="save_calib" class="btn">Uložit</button>
-      <button id="cancel_calib" class="btn">Zrušit</button>
-    </div>
-  </div>
+  </main>
 
   <script>
     const g04 = document.querySelector('#g04');
