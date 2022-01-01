@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+	
+<head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Keg Gauge</title>
+    <link rel="stylesheet" type="text/css" href="sass/style.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <meta name="msapplication-TileColor" content="#feda3e">
+    <meta name="theme-color" content="#feda3e">
+</head>
+
+<body>
+  <h1>Kegator - Ručkový ukazatel</h1>
+
+  <div id="nastaveni_site">
+    <h2>Nastavení sítě</h2>
+
+    <table>
+      <tr><td><label for="ssid">SSID:</label></td><td><input id="ssid" name="ssid"></td></tr>
+      <tr><td><label for="pasw">Password:</label></td><td><input id="pasw" name="pasw"></td></tr>
+      <tr><td><label for="ip">IP:</label></td><td><input id="ip" name="ip"></td></tr>
+    </table>
+    <div>
+      <button id="save_ssid" class="btn">Uložit</button>
+      <button id="cancel_ssid" class="btn">Zrušit</button>
+    </div>
+  </div>
+
+  <div id="kalibrace">
+    <h2>Kalibrace budíku</h2>
+
+    <table>
+      <tr>
+        <td><input type="radio" id="r04" name="test_gauge" value="04"><label for="r04">Prázdný</label></td>
+	<td><input type="range" name="g04" id="g04" min="0" max="255" step="1" value="100"></td>
+	<td><output class="g04_out" for="g04"></output>
+      </tr>
+      <tr>
+        <td><input type="radio" id="r14" name="test_gauge" value="14"><label for="r14">Čtvrt</label></td>
+	<td><input type="range" name="g14" id="g14" min="0" max="255" step="1" value="120"></td>
+	<td><output class="g14_out" for="g14"></output>
+      </tr>
+      <tr>
+        <td><input type="radio" id="r24" name="test_gauge" value="24"><label for="r24">Půl</label></td>
+	<td><input type="range" name="g24" id="g24" min="0" max="255" step="1" value="150"></td>
+	<td><output class="g24_out" for="g24"></output>
+      </tr>
+      <tr>
+        <td><input type="radio" id="r34" name="test_gauge" value="34"><label for="r34">Tři čtvrtiny</label></td>
+	<td><input type="range" name="g34" id="g34" min="0" max="255" step="1" value="175"></td>
+	<td><output class="g34_out" for="g34"></output>
+      </tr>
+      <tr>
+        <td><input type="radio" id="r44" name="test_gauge" value="44"><label for="r44">Plný</label></td>
+	<td><input type="range" name="g44" id="g44" min="0" max="255" step="1" value="200"></td>
+	<td><output class="g44_out" for="g44"></output>
+      </tr>
+    </table>
+    <div>
+      <button id="save_calib" class="btn">Uložit</button>
+      <button id="cancel_calib" class="btn">Zrušit</button>
+    </div>
+  </div>
+
+  <script>
+    const g04 = document.querySelector('#g04');
+    const r04 = document.querySelector('#r04');
+    const g04_out = document.querySelector('.g04_out');
+    g04_out.textContent = g04.value;
+    g04.addEventListener('input', function() {
+		      g04_out.textContent = g04.value;
+		      r04.checked = true;
+	      });
+
+    const g14 = document.querySelector('#g14');
+    const r14 = document.querySelector('#r14');
+    const g14_out = document.querySelector('.g14_out');
+    g14_out.textContent = g14.value;
+    g14.addEventListener('input', function() {
+		      g14_out.textContent = g14.value;
+		      r14.checked = true;
+	      });
+
+    const g24 = document.querySelector('#g24');
+    const r24 = document.querySelector('#r24');
+    const g24_out = document.querySelector('.g24_out');
+    g24_out.textContent = g24.value;
+    g24.addEventListener('input', function() {
+		      g24_out.textContent = g24.value;
+		      r24.checked = true;
+	      });
+	
+    const g34 = document.querySelector('#g34');
+    const r34 = document.querySelector('#r34');
+    const g34_out = document.querySelector('.g34_out');
+    g34_out.textContent = g34.value;
+    g34.addEventListener('input', function() {
+		      g34_out.textContent = g34.value;
+		      r34.checked = true;
+	      });
+
+    const g44 = document.querySelector('#g44');
+    const r44 = document.querySelector('#r44');
+    const g44_out = document.querySelector('.g44_out');
+    g44_out.textContent = g44.value;
+    g44.addEventListener('input', function() {
+		      g44_out.textContent = g44.value;
+		      r44.checked = true;
+	      });
+  </script>
+</body>
+</html>
