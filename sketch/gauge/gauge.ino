@@ -2,14 +2,17 @@
 
 */
 
+
 #include <Arduino.h>
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
-
 #include <ESP8266HTTPClient.h>
-
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
 #include <WiFiClient.h>
+
+#include <EEPROM.h>
 
 #include <Adafruit_NeoPixel.h>
 
@@ -19,6 +22,10 @@
 
 #define LED_PIN D7
 #define NUMPIXELS 2
+
+#define WLED LED_BUILTIN
+#define ON LOW
+#define OFF HIGH
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -41,10 +48,50 @@ ESP8266WiFiMulti WiFiMulti;
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+// wifi ap settings
+char ssid[16] = "disp123456";
+const char *password = "k3Gat0rr";
+bool AP_Mode = false;
+
+ESP8266WebServer server(80);
+
+void handleRoot() {
+  digitalWrite(WLED, ON);
+  char msg[1024];
+  sprintf(msg, "<!DOCTYPE html><html lang='cz'><head><title>Kegator display</title></head><body>Ahoj Světe!</body></html>");
+  server.send(200, "text/html", msg);
+  digitalWrite(WLED, OFF);
+}
+
+void handleNotFound() {
+  digitalWrite(WLED, ON);
+
+  if (server.method() == HTTP_OPTIONS) {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Max-Age", "10000");
+    server.sendHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+    server.send(204);
+  } else {
+    String message = "File Not Found\n\n";
+    message += "URI: ";
+    message += server.uri();
+    message += "\nMethod: ";
+    message += (server.method() == HTTP_GET) ? "GET" : "POST";
+    message += "\nArguments: ";
+    message += server.args();
+    message += "\n";
+    for (uint8_t i = 0; i < server.args(); i++) {
+      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    }
+    server.send(404, "text/plain", "");
+  }
+  digitalWrite(WLED, OFF);
+}
+
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(115200);
-  // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
   pinMode(GAUGE_ENABLE, OUTPUT);
@@ -63,17 +110,79 @@ void setup() {
 
   // show initial display buffer contents on the screen
   display.display();
+  display_intro();
+
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  sprintf(ssid, "disp%02X%02X%02X", mac[3], mac[4], mac[5]);
 
   // wifi connect
-  WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP(WSSID, WPWD);
+  if (!AP_Mode) {
+    AP_Mode = false;
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WSSID, WPWD);
+    // Wait for connection
+    Serial.print("Connecting WiFi ");
+    int cnt = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+      cnt ++;
+      if (cnt > 30)
+        break;
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println(" OK");
+      Serial.println(WiFi.localIP());
+    }
+    else {
+      Serial.println(" ERROR (timeout)");
+      AP_Mode = true;
+    }
+  }
+  if (AP_Mode) {
+    // start the access point
+    WiFi.mode(WIFI_AP);
+    IPAddress ip(192, 168, 42, 1);
+    IPAddress subnet(255, 255, 255, 0);
+    WiFi.softAPConfig(ip, ip, subnet);
+    WiFi.softAP(ssid, password);
+    Serial.print("Access Point \"");
+    Serial.print(ssid);
+    Serial.println("\" started");
+    Serial.print("IP address:\t");
+    Serial.println(WiFi.softAPIP());
+  }
+  
+  if (MDNS.begin(ssid)) Serial.println("MDNS responder started");
+
+  // mdns setup
+  server.on("/", handleRoot);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
+  Serial.println("HTTP server started");
+
+  // display wifi connection
+  if (AP_Mode) {
+    IPAddress dip = WiFi.softAPIP();
+    display_wifi(ssid, dip);
+  }
 }
 
 // the loop function runs over and over again forever
 void loop() {
+  // http server
+  server.handleClient();
+  MDNS.update();
+
   static uint8_t r = 0, g = 0, b = 0;
   static uint32_t wget_timer = 1000;
   static int err_cnt = 0;
+
+  static String temp;
+  static bool temp_valid = false;
+  static uint8_t dcnt = 0;
 
   static int gauge_setup = -1;
   static int gauge_setup_value = 0;
@@ -112,8 +221,8 @@ void loop() {
   }
 
   if ((millis() - wget_timer) > 1000) {
-    if (WiFiMulti.run() == WL_CONNECTED) {
-      digitalWrite(LED_BUILTIN, LOW);
+    if (WiFi.status() == WL_CONNECTED) {
+      digitalWrite(WLED, ON);
       WiFiClient client;
       HTTPClient http;
   
@@ -130,6 +239,13 @@ void loop() {
             Serial.print(prim);
             Serial.print(" ");
             Serial.println(primu);
+            if (key_exists(payload, "temp")) {
+              temp = strip_string(find_key_simple(payload, "temp"));
+              Serial.print(temp);
+              temp_valid = true;
+              Serial.println(" C");
+            }
+            else temp_valid = false;
             if (key_exists(payload, "keg")) {
               String kname = strip_string(find_key_simple(payload, "name"));
               String kvol = strip_string(find_key_simple(payload, "volume"));
@@ -166,18 +282,24 @@ void loop() {
               v = prim.toFloat();
               primu.toCharArray(u, 16);
             }
-            display_units(v, u);
+            dcnt += 1;
+            if (((dcnt & 0x1F) > 28) and (temp_valid))
+              display_temp(temp);
+            else
+              display_units(v, u);
             err_cnt = 0;
           }
         }
       }
-      digitalWrite(LED_BUILTIN, HIGH);
+      digitalWrite(WLED, OFF);
     }
     else {
       err_cnt += 1;
       if (err_cnt > 5) {
-        display_no_signal();
-        backlight_set_color(0, 0, 0);
+        if (!AP_Mode) {
+          display_no_signal();
+          backlight_set_color(0, 0, 0);
+        }
         err_cnt = 5;
       }
     }
