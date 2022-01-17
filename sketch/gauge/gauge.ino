@@ -18,19 +18,21 @@
 #include <Adafruit_SSD1306.h>
 
 #define LED_PIN D7
-#define NUMPIXELS 4
+#define NUMPIXELS 2
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 #define GAUGE_PIN D6
 #define GAUGE_ZERO 400
+#define GAUGE_ENABLE D5
 
 ESP8266WiFiMulti WiFiMulti;
 
 //#define WSSID "keg6D98FD"
 //#define WSSID "keg60B784"
 //#define WSSID "kegFCADEB"
-#define WSSID "kegE1BBF2"
+//#define WSSID "kegE1BBF2"
+#define WSSID "keg98A154"
 #define WPWD "k3Gat0rr"
 
 // display
@@ -44,6 +46,9 @@ void setup() {
   Serial.begin(115200);
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
+
+  pinMode(GAUGE_ENABLE, OUTPUT);
+  digitalWrite(GAUGE_ENABLE, HIGH);
 
   // backlight initialization
   pixels.begin();
