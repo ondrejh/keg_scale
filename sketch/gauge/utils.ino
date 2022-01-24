@@ -167,27 +167,6 @@ void backlight_set_color(uint8_t r, uint8_t g, uint8_t b) {
 
 // ------ GAUGE ------------------------------------ ///
 
-// version 3
-#define GAUGE_MAX 150
-#define GAUGE_MIN 30
-// version 2
-//#define GAUGE_MAX 700
-//#define GAUGE_MIN 330
-// version 1
-//#define GAUGE_MAX 370
-//#define GAUGE_MIN 260
-#define GAUGE_TUNE_1_4 0
-#define GAUGE_TUNE_2_4 0
-#define GAUGE_TUNE_3_4 0
-#define GAUGE_ZERO 0
-
-const int gauge_steps[5] = {\
-  GAUGE_MIN,\
-  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 4 + GAUGE_TUNE_1_4,\
-  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 2 + GAUGE_TUNE_2_4,\
-  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) * 3 / 4 + GAUGE_TUNE_3_4,\
-  GAUGE_MAX};
-
 int get_gauge_steps(int v) {
   return (v == 0) ? GAUGE_ZERO : gauge_steps[v-1];
 }

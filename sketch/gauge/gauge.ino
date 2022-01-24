@@ -42,6 +42,28 @@ ESP8266WiFiMulti WiFiMulti;
 #define WSSID "keg98A154"
 #define WPWD "k3Gat0rr"
 
+// gauge
+// version 3
+#define GAUGE_MAX 150
+#define GAUGE_MIN 30
+// version 2
+//#define GAUGE_MAX 700
+//#define GAUGE_MIN 330
+// version 1
+//#define GAUGE_MAX 370
+//#define GAUGE_MIN 260
+#define GAUGE_TUNE_1_4 0
+#define GAUGE_TUNE_2_4 0
+#define GAUGE_TUNE_3_4 0
+#define GAUGE_ZERO 0
+
+const int gauge_steps[5] = {\
+  GAUGE_MIN,\
+  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 4 + GAUGE_TUNE_1_4,\
+  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 2 + GAUGE_TUNE_2_4,\
+  GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) * 3 / 4 + GAUGE_TUNE_3_4,\
+  GAUGE_MAX};
+
 // display
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -60,6 +82,21 @@ void handleRoot() {
   char msg[1024];
   sprintf(msg, "<!DOCTYPE html><html lang='cz'><head><title>Kegator display</title></head><body>Ahoj Světe!</body></html>");
   server.send(200, "text/html", msg);
+  digitalWrite(WLED, OFF);
+}
+
+void handleData() {
+  digitalWrite(WLED, ON);
+  char msg[1024];
+  int p = sprintf(msg, "{\"gcal\": {");
+  bool first = true;
+  for (int i=0; i<5; i++) {
+    if (first) p += sprintf(&msg[p], "\"p0\": %d", GAUGE_ZERO);
+    p += sprintf(&msg[p], ", \"p%d\": %d", i + 1, gauge_steps[i]);
+    first = false;
+  }
+  p += sprintf(&msg[p], "}}");
+  server.send(200, "application/json", msg);
   digitalWrite(WLED, OFF);
 }
 
@@ -158,6 +195,7 @@ void setup() {
 
   // mdns setup
   server.on("/", handleRoot);
+  server.on("/data.json", handleData);
   server.onNotFound(handleNotFound);
 
   server.begin();
