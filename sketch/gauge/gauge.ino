@@ -35,12 +35,21 @@ Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 ESP8266WiFiMulti WiFiMulti;
 
+#define WSSID_MAX 32
+#define WPWD_MAX 32
+#define KEGIP_MAX 16
+
 //#define WSSID "keg6D98FD"
 //#define WSSID "keg60B784"
 //#define WSSID "kegFCADEB"
 //#define WSSID "kegE1BBF2"
 #define WSSID "keg98A154"
 #define WPWD "k3Gat0rr"
+#define KEGIP "192.168.42.1"
+
+char wssid[WSSID_MAX] = WSSID;
+char wpwd[WPWD_MAX] = WPWD;
+char kegip[KEGIP_MAX] = KEGIP;
 
 // gauge
 // version 3
@@ -57,7 +66,8 @@ ESP8266WiFiMulti WiFiMulti;
 #define GAUGE_TUNE_3_4 0
 #define GAUGE_ZERO 0
 
-const int gauge_steps[5] = {\
+int gauge_zero = GAUGE_ZERO;
+int gauge_steps[5] = {\
   GAUGE_MIN,\
   GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 4 + GAUGE_TUNE_1_4,\
   GAUGE_MIN + (GAUGE_MAX - GAUGE_MIN) / 2 + GAUGE_TUNE_2_4,\
@@ -91,12 +101,94 @@ void handleData() {
   int p = sprintf(msg, "{\"gcal\": {");
   bool first = true;
   for (int i=0; i<5; i++) {
-    if (first) p += sprintf(&msg[p], "\"p0\": %d", GAUGE_ZERO);
+    if (first) p += sprintf(&msg[p], "\"p0\": %d", gauge_zero);
     p += sprintf(&msg[p], ", \"p%d\": %d", i + 1, gauge_steps[i]);
     first = false;
   }
-  p += sprintf(&msg[p], "}}");
+  p += sprintf(&msg[p], "}, \"wssid\": \"%s\"}", wssid);
   server.send(200, "application/json", msg);
+  digitalWrite(WLED, OFF);
+}
+
+#define ARGLEN_MAX 16
+#define DOANSW_LEN 16
+void handleDo() {
+  digitalWrite(WLED, ON);
+  char msg[DOANSW_LEN];
+  bool error = true;
+  for (int i=0; i<6; i++) {
+    char px[3];
+    sprintf(px, "p%d", i);
+    if (server.hasArg(px)) {
+      char sVal[ARGLEN_MAX+1];
+      int val;
+      server.arg(px).toCharArray(sVal, ARGLEN_MAX+1);
+      if (sscanf(sVal, "%d", &val) == 1) {
+        Serial.print(px);
+        Serial.print(": ");
+        Serial.println(val);
+        if ((val >= 0) && (val <= 1023)) { // not val out of range
+          if (i > 0) 
+            gauge_steps[i - 1] = val;
+          else
+            gauge_zero = val;
+          error = false;
+        }
+      }
+    }
+  }
+  /*if (server.hasArg("gcal") and server.hasArg("val")) {
+    char sGcal[ARGLEN_MAX+1];
+    char sVal[ARGLEN_MAX+1];
+    int gcal;
+    int val;
+    server.arg("gcal").toCharArray(sGcal, ARGLEN_MAX);
+    sGcal[ARGLEN_MAX] = '\0';
+    server.arg("val").toCharArray(sVal, ARGLEN_MAX);
+    sVal[ARGLEN_MAX] = '\0';
+    if ((sscanf(sGcal, "%d", &gcal) == 1) && (sscanf(sVal, "%d", &val) == 1)) {
+      Serial.print("p");
+      Serial.print(gcal);
+      Serial.print(": ");
+      Serial.println(val);
+      if ((gcal < 0) || (gcal > 5)) // gcal out of range
+        error = true;
+      else if ((val < 0) || (val > 1023)) // val out of range
+        error = true;
+      else {
+        if (gcal > 0) 
+          gauge_steps[gcal - 1] = val;
+        else
+          gauge_zero = val;
+        error = false;
+      }
+    }
+  }*/
+  if (server.hasArg("save")) {
+    Serial.println("save");
+    error = false;
+  }
+  if (server.hasArg("cancel")) {
+    Serial.println("cancel");
+    error = false;
+  }
+  if (server.hasArg("ssid") and server.hasArg("pwd")) {
+    server.arg("ssid").toCharArray(wssid, WSSID_MAX);
+    server.arg("pwd").toCharArray(wpwd, WPWD_MAX);
+    Serial.print("SSID: ");
+    Serial.print(wssid);
+    Serial.print(" PWD: ");
+    Serial.println(wpwd);
+    error = false;
+  }
+  if (server.hasArg("ip")) {
+    server.arg("ip").toCharArray(kegip, KEGIP_MAX);
+    Serial.print("KegIp: ");
+    Serial.println(kegip);
+    error = false;
+  }
+  sprintf(msg, error ? "ERROR" : "OK");
+  server.send(200, "text/html", msg);
   digitalWrite(WLED, OFF);
 }
 
@@ -139,7 +231,7 @@ void setup() {
   backlight_set_color(0, 0, 0);
 
   // gauge initialization
-  gauge_zero();
+  gauge_set_zero();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))// Address 0x3C for 128x32
@@ -196,6 +288,7 @@ void setup() {
   // mdns setup
   server.on("/", handleRoot);
   server.on("/data.json", handleData);
+  server.on("/do.php", handleDo);
   server.onNotFound(handleNotFound);
 
   server.begin();
@@ -314,7 +407,7 @@ void loop() {
               r = 0; g = 0; b = 255;
               if (gauge_setup < 0) {
                 backlight_set_color(r, g, b);
-                gauge_zero();
+                gauge_set_zero();
               }
               
               v = prim.toFloat();

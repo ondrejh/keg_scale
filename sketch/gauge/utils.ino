@@ -212,6 +212,6 @@ void gauge_set(float val) {
   analogWrite(GAUGE_PIN, gauge_interpolate(val));
 }
 
-void gauge_zero() {
+void gauge_set_zero() {
   analogWrite(GAUGE_PIN, GAUGE_ZERO);
 }
