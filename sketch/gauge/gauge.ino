@@ -50,6 +50,7 @@ ESP8266WiFiMulti WiFiMulti;
 char wssid[WSSID_MAX] = WSSID;
 char wpwd[WPWD_MAX] = WPWD;
 char kegip[KEGIP_MAX] = KEGIP;
+bool AP_Mode = false;
 
 // gauge
 // version 3
@@ -80,10 +81,21 @@ int gauge_steps[5] = {\
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// wifi ap settings
-char ssid[16] = "disp123456";
-const char *password = "k3Gat0rr";
-bool AP_Mode = false;
+#define EEPROM_SIZE 1024
+
+// calibration data
+#define EEPROM_CONF_ADDR 0
+#define STR_MAX 32
+#define CLBLEN 5
+typedef struct {
+  char wssid[STR_MAX];
+  char wpwd[STR_MAX];
+  char kegip[STR_MAX];
+  uint16_t p0;
+  uint16_t p[5];
+} cnf_t;
+
+cnf_t cnf;
 
 ESP8266WebServer server(80);
 
@@ -105,9 +117,33 @@ void handleData() {
     p += sprintf(&msg[p], ", \"p%d\": %d", i + 1, gauge_steps[i]);
     first = false;
   }
-  p += sprintf(&msg[p], "}, \"wssid\": \"%s\"}", wssid);
+  p += sprintf(&msg[p], "}");
+  p += sprintf(&msg[p], ", \"wssid\": \"%s\"", wssid);
+  p += sprintf(&msg[p], ", \"kegip\": \"%s\"", kegip);
+  p += sprintf(&msg[p], "}");
   server.send(200, "application/json", msg);
   digitalWrite(WLED, OFF);
+}
+
+// load cnf content to 
+void load_cnf() {
+  gauge_zero = cnf.p0;
+  for (int i=0; i<5; i++)
+    gauge_steps[i] = cnf.p[i];
+  strncpy(wssid, cnf.wssid, sizeof(wssid));
+  strncpy(wpwd, cnf.wpwd, sizeof(wpwd));
+  strncpy(kegip, cnf.kegip, sizeof(kegip));
+}
+
+// save actual data to cnf (ToDo)
+void save_to_cnf() {
+  cnf.p0 = gauge_zero;
+  for (int i=0; i<5; i++)
+    cnf.p[i] = gauge_steps[i];
+  strncpy(cnf.wssid, wssid, sizeof(cnf.wssid));
+  strncpy(cnf.wpwd, wpwd, sizeof(cnf.wpwd));
+  strncpy(cnf.kegip, kegip, sizeof(cnf.kegip));
+  eesave(EEPROM_CONF_ADDR, &cnf, sizeof(cnf));  
 }
 
 #define ARGLEN_MAX 16
@@ -116,6 +152,7 @@ void handleDo() {
   digitalWrite(WLED, ON);
   char msg[DOANSW_LEN];
   bool error = true;
+  bool somethingHasChanged = false;
   for (int i=0; i<6; i++) {
     char px[3];
     sprintf(px, "p%d", i);
@@ -133,6 +170,7 @@ void handleDo() {
           else
             gauge_zero = val;
           error = false;
+          somethingHasChanged = true;
         }
       }
     }
@@ -164,12 +202,9 @@ void handleDo() {
       }
     }
   }*/
-  if (server.hasArg("save")) {
-    Serial.println("save");
-    error = false;
-  }
   if (server.hasArg("cancel")) {
     Serial.println("cancel");
+    load_cnf();
     error = false;
   }
   if (server.hasArg("ssid") and server.hasArg("pwd")) {
@@ -187,9 +222,26 @@ void handleDo() {
     Serial.println(kegip);
     error = false;
   }
+  if (server.hasArg("save")) {
+    Serial.println("save");
+    save_to_cnf();
+    error = false;
+  }
   sprintf(msg, error ? "ERROR" : "OK");
   server.send(200, "text/html", msg);
   digitalWrite(WLED, OFF);
+}
+
+void set_cnf_default(cnf_t *cnf) {
+  cnf->wssid[0] = '\0';
+  cnf->wpwd[0] = '\0';
+  cnf->kegip[0] = '\0';
+  cnf->p0 = 0;
+  cnf->p[0] = 30;
+  cnf->p[1] = 60;
+  cnf->p[2] = 90;
+  cnf->p[3] = 120;
+  cnf->p[4] = 150;
 }
 
 void handleNotFound() {
@@ -233,6 +285,14 @@ void setup() {
   // gauge initialization
   gauge_set_zero();
 
+  // load eeprom
+  // init eeprom data
+  init_eeprom(EEPROM_SIZE);
+  if (eeload(EEPROM_CONF_ADDR, &cnf, sizeof(cnf)) < 0)
+    set_cnf_default(&cnf);
+
+  load_cnf();
+
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))// Address 0x3C for 128x32
     Serial.println(F("SSD1306 allocation failed"));
@@ -243,7 +303,9 @@ void setup() {
 
   uint8_t mac[6];
   WiFi.macAddress(mac);
-  sprintf(ssid, "disp%02X%02X%02X", mac[3], mac[4], mac[5]);
+  sprintf(wssid, "disp%02X%02X%02X", mac[3], mac[4], mac[5]);
+
+  AP_Mode = (strlen(cnf.wssid) != 0);
 
   // wifi connect
   if (!AP_Mode) {
@@ -275,15 +337,15 @@ void setup() {
     IPAddress ip(192, 168, 42, 1);
     IPAddress subnet(255, 255, 255, 0);
     WiFi.softAPConfig(ip, ip, subnet);
-    WiFi.softAP(ssid, password);
+    WiFi.softAP(wssid, wpwd);
     Serial.print("Access Point \"");
-    Serial.print(ssid);
+    Serial.print(wssid);
     Serial.println("\" started");
     Serial.print("IP address:\t");
     Serial.println(WiFi.softAPIP());
   }
   
-  if (MDNS.begin(ssid)) Serial.println("MDNS responder started");
+  if (MDNS.begin(wssid)) Serial.println("MDNS responder started");
 
   // mdns setup
   server.on("/", handleRoot);
@@ -297,7 +359,7 @@ void setup() {
   // display wifi connection
   if (AP_Mode) {
     IPAddress dip = WiFi.softAPIP();
-    display_wifi(ssid, dip);
+    display_wifi(wssid, dip);
   }
 }
 
