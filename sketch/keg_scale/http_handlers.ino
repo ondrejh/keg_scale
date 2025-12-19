@@ -140,26 +140,6 @@ void handleBarell() {
   digitalWrite(WLED, OFF);
 }
 
-void handleJquery() {
-  //uint32_t now = millis();
-  digitalWrite(WLED, ON);
-  //Serial.print("jquery_3_bin");
-  //Serial.print(" .. ");
-  server.send(200, "application/javascript", jquery_3_bin, sizeof(jquery_3_bin));
-  //Serial.println(millis() - now);
-  digitalWrite(WLED, OFF);
-}
-
-void handleJqueryUi() {
-  //uint32_t now = millis();
-  digitalWrite(WLED, ON);
-  //Serial.print("jquery_ui_1_bin");
-  //Serial.print(" .. ");
-  server.send(200, "application/javascript", jquery_ui_1_bin, sizeof(jquery_ui_1_bin));
-  //Serial.println(millis() - now);
-  digitalWrite(WLED, OFF);
-}
-
 void jsonHeader() {
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Cache-Control", "no-cache");
@@ -175,8 +155,6 @@ void handleData() {
   char msg[1024];
   int p = 0;
   p = sprintf(msg, "{\"devid\": \"%s\", \"sw\": \"%s\", ", ssid, sw_version);
-  if (conf.dkey[0] != '\0') 
-    p += sprintf(&msg[p], "\"dkey\": \"%s\", ", conf.dkey);
   p += sprintf(&msg[p], "\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
   if (temperature_valid)
     p += sprintf(&msg[p], "\"temp\": %0.1f, \"traw\": %d, ", temperature, raw_temp);
@@ -341,19 +319,12 @@ void handleDo() {
     }
   }
 
-  else if (server.hasArg("dkey")) { // set device key
-    server.arg("dkey").toCharArray(conf.dkey, CONF_DKEY_MAX);
-    conf.dkey[CONF_DKEY_MAX] = '\0';
-    eesave(EEPROM_CONF_ADDR, &conf, sizeof(conf));
-    res = true;
-  }
-
   else if (server.hasArg("wssid")) { // set wifi name (and password)
     server.arg("wssid").toCharArray(conf.ssid, CONF_SSID_MAX);
     conf.ssid[CONF_SSID_MAX] = '\0';
     if (server.hasArg("wpwd")) {
-      server.arg("wpwd").toCharArray(conf.wpwd, CONF_WPWD_MAX);
-      conf.wpwd[CONF_WPWD_MAX] = '\0';
+      server.arg("wpwd").toCharArray(conf.wpwd, CONF_PWD_MAX);
+      conf.wpwd[CONF_PWD_MAX] = '\0';
     }
     else
       conf.wpwd[0] = '\0';

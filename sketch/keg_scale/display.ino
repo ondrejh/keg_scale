@@ -4,7 +4,10 @@ void display_units(float val, char *unit) {
   char buff[32];
   int blen;
   int tsiz;
-  sprintf(buff, "%0.1f %s", val, unit);
+  if (unit[0] == '\0')
+    sprintf(buff, "%0.1f", val);
+  else
+    sprintf(buff, "%0.1f %s", val, unit);
   blen = strlen(buff);
   tsiz = SCREEN_WIDTH / (blen * 6);
   if (tsiz < 1) tsiz = 1;

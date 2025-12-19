@@ -6,6 +6,7 @@
  *   v0.3 .. whispler on kegs
  *   v0.4 .. no AP mode, display temperature and wifi info
  *   v0.4.1 .. no-cache on json 
+ *   v0.5 .. no jquerry (much lighter webi)
  * 
  * done:
  *   individual device and ssid name
@@ -16,7 +17,7 @@
  *   save at least 10 last keg names for whispler
  * 
  * todo:
- *   connect to local wifi (wifi multi)
+ *   connect to mqtt (home assistant)
  */
 
 #define NOAP true
@@ -44,7 +45,7 @@
 #define DISP_TEMPERATURE_TIMEOUT 5000
 #define DISP_WIFI_TIMEOUT 3000
 
-const char* sw_version = "0.4.1";
+const char* sw_version = "0.5";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
@@ -101,14 +102,16 @@ keg_t keg;
 
 #define EEPROM_CONF_ADDR (EEPROM_KEG_ADDR+2+sizeof(keg_t))
 #define CONF_SSID_MAX 16
-#define CONF_WPWD_MAX 16
-#define CONF_DKEY_MAX 16
-#define CONF_PIN_MAX 16
+#define CONF_PWD_MAX 16
+#define CONF_URL_MAX 64
+#define CONF_USR_MAX 16
 typedef struct {
   char ssid[CONF_SSID_MAX+1];
-  char wpwd[CONF_WPWD_MAX+1];
-  char dkey[CONF_DKEY_MAX+1];
-  char pin[CONF_PIN_MAX+1];
+  char wpwd[CONF_PWD_MAX+1];
+  char mqtt[CONF_URL_MAX+1];
+  char mqtt_topic[CONF_URL_MAX+1];
+  char mqtt_user[CONF_USR_MAX+1];
+  char mqtt_pass[CONF_PWD_MAX+1];
 } conf_t;
 
 conf_t conf;
@@ -260,8 +263,8 @@ void setup() {
   server.on(img_android_chrome_192x192_name, handleAndroid192);
   server.on(img_site_name, handleSite);
   
-  server.on(jquery_3_name, handleJquery);
-  server.on(jquery_ui_1_name, handleJqueryUi);
+  //server.on(jquery_3_name, handleJquery);
+  //server.on(jquery_ui_1_name, handleJqueryUi);
   server.on("/data.json", handleData);
   server.on("/conf.json", handleConfData);
   server.on("/do.php", HTTP_POST, handleDo);
@@ -428,7 +431,7 @@ void loop() {
       if (last_scale_units != scale_units) {
         if (KEG) {
           keg_left = keg.volume - (keg_full - scale_units) / calib.us;
-          display_units(keg_left, calib.usec);
+          display_units(keg_left, (char*)"");//calib.usec);
         }
         else
           display_units(scale_units, calib.uprim);
