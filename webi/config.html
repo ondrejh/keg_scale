@@ -30,6 +30,14 @@ function load() {
         	document.getElementById("wifi_ssid").value = data.ssid;
         	document.getElementById("wifi_pwd").placeholder = "******";
     	}
+		if ('mqtt_url' in data)
+			document.getElementById("mqtt_url").value = data.mqtt_url;
+		if ('mqtt_topic' in data)
+			document.getElementById("mqtt_topic").value = data.mqtt_topic;
+		if ('mqtt_user' in data) {
+			document.getElementById("mqtt_user").value = data.mqtt_user;
+			document.getElementById("mqtt_pass").placeholder = "******";
+		}
     })
     .catch(error => {
     	console.error("Error loading conf.json:", error);
@@ -96,11 +104,10 @@ function save(geto) {
                 <h1>Nastavení</h1>
             </div>
             <div class="form">
-		<h2>Síť v lokále</h2>
+				<h2>Přihlášení do sítě v lokále</h2>
                 <p class="line">
                     <label for="wifi_ssid">Jméno sítě</label>
                     <input id='wifi_ssid' class="field" placeholder='pivniGaraz'/>
-
                 </p>
                 <p class="line">
                     <label for="wifi_pwd">Přihlašovací heslo</label>
@@ -109,23 +116,78 @@ function save(geto) {
                 <p class="btns">
                     <button id='save_ssid' class="btn">Potvrdit</button>
                 </p>
-		<p class="btns">
-		    <button id='rem_ssid' class="btn">Odstranit</button>
-		</p>
+				<p class="btns">
+		    		<button id='rem_ssid' class="btn">Odstranit</button>
+				</p>
             </div>
-	    <div class="form">
-		    <h2>Váš Kegator &reg; nyní disponuje firmwarem <span id="fw_version">neznámým</span></h2>
-	    </div>
-	    <p class="btns">
-                <button id='cancel' class="btn">Hotovo</button>
-	    </p>
-
-	</div>
+			<div class="form">
+				<h2>Odesílání na MQTT server</h2>
+				<p class="line">
+					<label for="mqtt_url">Adresa serveru</label>
+					<input id="mqtt_url" class="field" placeholder="http://homeassistant.local"/>
+				</p>
+				<p class="line">
+					<label for="mqtt_topic">Topic</label>
+					<input id="mqtt_topic" class="field" placeholder="home/keg"/>
+				</p>
+				<p class="line">
+					<label for="mqtt_user">Login</label>
+					<input id="mqtt_user" class="field" placeholder="Franta"/>
+				</p>
+				<p class="line">
+					<label for="mqtt_pass">Heslo</label>
+					<input id="mqtt_pass" class="field" placehoder="654321"/>
+				</p>
+				<p class="btns">
+					<button id="save_mqtt" class="btn">Potvrdit</button>
+				</p>
+				<p class="btns">
+					<button id="rem_mqtt" class="btn">Odstranit</button>
+				</p>
+			</div>
+	    	<div class="form">
+		    	<h2>Váš Kegator &reg; nyní disponuje firmwarem <span id="fw_version">neznámým</span></h2>
+	    	</div>
+	    	<p class="btns">
+            	<button id='cancel' class="btn">Hotovo</button>
+	    	</p>
+		</div>
     </main>
 
     <script>
 
 document.addEventListener("DOMContentLoaded", function() {
+
+	// Uložit MQTT
+	document.getElementById("save_mqtt").addEventListener("click", function() {
+    	const geto = {};
+    	const mqtt_url = document.getElementById("mqtt_url").value;
+    	if ((mqtt_url !== undefined) && (mqtt_url !== ""))
+      		geto['mqtt_url'] = mqtt_url;
+    	const mqtt_topic = document.getElementById("mqtt_topic").value;
+		if ((mqtt_topic !== undefined) && (mqtt_topic !== ""))
+			geto['mqtt_topic'] = mqtt_topic;
+		const mqtt_user = document.getElementById("mqtt_user").value;
+		if ((mqtt_user !== undefined) && (mqtt_user !== "")) {
+			geto['mqtt_user'] = mqtt_user;
+			const mqtt_pass = document.getElementById("mqtt_pass").value;
+			if ((mqtt_pass === undefined) || (mqtt_pass === ""))
+				mqtt_pass = "";
+			geto['mqtt_pass'] = mqtt_pass;
+		};
+    	save(geto);
+  	});
+
+	// Odstranit MQTT
+	document.getElementById("rem_mqtt").addEventListener("click", function() {
+		const geto = {
+			mqtt_url: "",
+			mqtt_topic: "",
+			mqtt_user: "",
+			mqtt_pass: ""
+		};
+    	save(geto);
+	});
 
 	// Uložit WiFi SSID
 	document.getElementById("save_ssid").addEventListener("click", function() {
@@ -137,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function() {
       		if (pwd === undefined || pwd === "")
 				pwd = '';
       		geto['wpwd'] = pwd;
-    	}
+    	};
     	save(geto);
   	});
 

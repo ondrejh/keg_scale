@@ -346,6 +346,14 @@ function load() {\n\
         	document.getElementById(\"wifi_ssid\").value = data.ssid;\n\
         	document.getElementById(\"wifi_pwd\").placeholder = \"******\";\n\
     	}\n\
+		if ('mqtt_url' in data)\n\
+			document.getElementById(\"mqtt_url\").value = data.mqtt_url;\n\
+		if ('mqtt_topic' in data)\n\
+			document.getElementById(\"mqtt_topic\").value = data.mqtt_topic;\n\
+		if ('mqtt_user' in data) {\n\
+			document.getElementById(\"mqtt_user\").value = data.mqtt_user;\n\
+			document.getElementById(\"mqtt_pass\").placeholder = \"******\";\n\
+		}\n\
     })\n\
     .catch(error => {\n\
     	console.error(\"Error loading conf.json:\", error);\n\
@@ -412,11 +420,10 @@ function save(geto) {\n\
                 <h1>Nastavení</h1>\n\
             </div>\n\
             <div class=\"form\">\n\
-		<h2>Síť v lokále</h2>\n\
+				<h2>Přihlášení do sítě v lokále</h2>\n\
                 <p class=\"line\">\n\
                     <label for=\"wifi_ssid\">Jméno sítě</label>\n\
                     <input id='wifi_ssid' class=\"field\" placeholder='pivniGaraz'/>\n\
-\n\
                 </p>\n\
                 <p class=\"line\">\n\
                     <label for=\"wifi_pwd\">Přihlašovací heslo</label>\n\
@@ -425,23 +432,78 @@ function save(geto) {\n\
                 <p class=\"btns\">\n\
                     <button id='save_ssid' class=\"btn\">Potvrdit</button>\n\
                 </p>\n\
-		<p class=\"btns\">\n\
-		    <button id='rem_ssid' class=\"btn\">Odstranit</button>\n\
-		</p>\n\
+				<p class=\"btns\">\n\
+		    		<button id='rem_ssid' class=\"btn\">Odstranit</button>\n\
+				</p>\n\
             </div>\n\
-	    <div class=\"form\">\n\
-		    <h2>Váš Kegator &reg; nyní disponuje firmwarem <span id=\"fw_version\">neznámým</span></h2>\n\
-	    </div>\n\
-	    <p class=\"btns\">\n\
-                <button id='cancel' class=\"btn\">Hotovo</button>\n\
-	    </p>\n\
-\n\
-	</div>\n\
+			<div class=\"form\">\n\
+				<h2>Odesílání na MQTT server</h2>\n\
+				<p class=\"line\">\n\
+					<label for=\"mqtt_url\">Adresa serveru</label>\n\
+					<input id=\"mqtt_url\" class=\"field\" placeholder=\"http://homeassistant.local\"/>\n\
+				</p>\n\
+				<p class=\"line\">\n\
+					<label for=\"mqtt_topic\">Topic</label>\n\
+					<input id=\"mqtt_topic\" class=\"field\" placeholder=\"home/keg\"/>\n\
+				</p>\n\
+				<p class=\"line\">\n\
+					<label for=\"mqtt_user\">Login</label>\n\
+					<input id=\"mqtt_user\" class=\"field\" placeholder=\"Franta\"/>\n\
+				</p>\n\
+				<p class=\"line\">\n\
+					<label for=\"mqtt_pass\">Heslo</label>\n\
+					<input id=\"mqtt_pass\" class=\"field\" placehoder=\"654321\"/>\n\
+				</p>\n\
+				<p class=\"btns\">\n\
+					<button id=\"save_mqtt\" class=\"btn\">Potvrdit</button>\n\
+				</p>\n\
+				<p class=\"btns\">\n\
+					<button id=\"rem_mqtt\" class=\"btn\">Odstranit</button>\n\
+				</p>\n\
+			</div>\n\
+	    	<div class=\"form\">\n\
+		    	<h2>Váš Kegator &reg; nyní disponuje firmwarem <span id=\"fw_version\">neznámým</span></h2>\n\
+	    	</div>\n\
+	    	<p class=\"btns\">\n\
+            	<button id='cancel' class=\"btn\">Hotovo</button>\n\
+	    	</p>\n\
+		</div>\n\
     </main>\n\
 \n\
     <script>\n\
 \n\
 document.addEventListener(\"DOMContentLoaded\", function() {\n\
+\n\
+	// Uložit MQTT\n\
+	document.getElementById(\"save_mqtt\").addEventListener(\"click\", function() {\n\
+    	const geto = {};\n\
+    	const mqtt_url = document.getElementById(\"mqtt_url\").value;\n\
+    	if ((mqtt_url !== undefined) && (mqtt_url !== \"\"))\n\
+      		geto['mqtt_url'] = mqtt_url;\n\
+    	const mqtt_topic = document.getElementById(\"mqtt_topic\").value;\n\
+		if ((mqtt_topic !== undefined) && (mqtt_topic !== \"\"))\n\
+			geto['mqtt_topic'] = mqtt_topic;\n\
+		const mqtt_user = document.getElementById(\"mqtt_user\").value;\n\
+		if ((mqtt_user !== undefined) && (mqtt_user !== \"\")) {\n\
+			geto['mqtt_user'] = mqtt_user;\n\
+			const mqtt_pass = document.getElementById(\"mqtt_pass\").value;\n\
+			if ((mqtt_pass === undefined) || (mqtt_pass === \"\"))\n\
+				mqtt_pass = \"\";\n\
+			geto['mqtt_pass'] = mqtt_pass;\n\
+		};\n\
+    	save(geto);\n\
+  	});\n\
+\n\
+	// Odstranit MQTT\n\
+	document.getElementById(\"rem_mqtt\").addEventListener(\"click\", function() {\n\
+		const geto = {\n\
+			mqtt_url: \"\",\n\
+			mqtt_topic: \"\",\n\
+			mqtt_user: \"\",\n\
+			mqtt_pass: \"\"\n\
+		};\n\
+    	save(geto);\n\
+	});\n\
 \n\
 	// Uložit WiFi SSID\n\
 	document.getElementById(\"save_ssid\").addEventListener(\"click\", function() {\n\
@@ -453,7 +515,7 @@ document.addEventListener(\"DOMContentLoaded\", function() {\n\
       		if (pwd === undefined || pwd === \"\")\n\
 				pwd = '';\n\
       		geto['wpwd'] = pwd;\n\
-    	}\n\
+    	};\n\
     	save(geto);\n\
   	});\n\
 \n\

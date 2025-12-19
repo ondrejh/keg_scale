@@ -189,8 +189,12 @@ void handleConfData() {
   //if (conf.dkey[0] != '\0') 
   //  p += sprintf(&msg[p], " \"dkey\" :\"%s\"", conf.dkey);
   if (conf.ssid[0] != '\0')
-    p += sprintf(&msg[p], " \"ssid\" :\"%s\"", conf.ssid);
-  p += sprintf(&msg[p], " }");
+    p += sprintf(&msg[p], "\"ssid\": \"%s\",", conf.ssid);
+  if (conf.mqtt_url[0] != '\0')
+    p += sprintf(&msg[p], "\"mqtt_url\": \"%s\",", conf.mqtt_url);
+  if (conf.mqtt_user[0] != '\0')
+    p += sprintf(&msg[p], "\"mqtt_user\": \"%s\",", conf.mqtt_user);
+  p += sprintf(&msg[p], "\"mqtt_topic\": \"%s\"}", conf.mqtt_topic);
 
   jsonHeader();
   server.send(200, "application/json", msg);
@@ -329,6 +333,52 @@ void handleDo() {
     else
       conf.wpwd[0] = '\0';
     eesave(EEPROM_CONF_ADDR, &conf, sizeof(conf));
+    res = true;
+  }
+
+  else if ((server.hasArg("mqtt_url")) || (server.hasArg("mqtt_topic")) || (server.hasArg("mqtt_user"))) {
+    bool needsave = false;
+    if (server.hasArg("mqtt_topic")) {
+      server.arg("mqtt_topic").toCharArray(conf.mqtt_topic, CONF_URL_MAX);
+      conf.mqtt_topic[CONF_URL_MAX] = 0;
+
+      Serial.print("mqtt_topic ");
+      Serial.println(conf.mqtt_topic);
+
+      needsave = true;
+    }
+    if (server.hasArg("mqtt_url")) {
+      server.arg("mqtt_url").toCharArray(conf.mqtt_url, CONF_URL_MAX);
+      conf.mqtt_url[CONF_URL_MAX] = 0;
+      needsave = true;
+
+      Serial.print("mqtt_url ");
+      Serial.println(conf.mqtt_url);
+
+      if (conf.mqtt_topic[0] == '\0') {
+        sprintf(conf.mqtt_topic, "home/keg/%s", ssid);
+      }
+    }
+    if (server.hasArg("mqtt_user")) {
+      server.arg("mqtt_user").toCharArray(conf.mqtt_user, CONF_USR_MAX);
+      conf.mqtt_user[CONF_USR_MAX] = 0;
+      needsave = true;
+
+      Serial.print("mqtt_user ");
+      Serial.println(conf.mqtt_user);
+
+      if (server.hasArg("mqtt_pass")) {
+        server.arg("mqtt_pass").toCharArray(conf.mqtt_pass, CONF_PWD_MAX);
+        conf.mqtt_pass[CONF_PWD_MAX] = 0;
+
+        Serial.print("mqtt_pass ");
+        Serial.println(conf.mqtt_pass);
+      }
+      else
+        conf.mqtt_pass[0] = '\0';
+    }
+    if (needsave)
+      eesave(EEPROM_CONF_ADDR, &conf, sizeof(conf));
     res = true;
   }
 

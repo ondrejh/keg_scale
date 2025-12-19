@@ -32,6 +32,8 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
+#include <PubSubClient.h>
+
 #include <EEPROM.h>
 
 #include <OneWire.h>
@@ -49,6 +51,11 @@ const char* sw_version = "0.5";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
+
+// home assistant mqtt
+const int MQTT_PORT = 1883;
+bool mqtt_status = false;
+#define MQTT_SEND_PERIOD_MS 5000
 
 float temperature;
 int16_t raw_temp = 0;
@@ -106,9 +113,11 @@ keg_t keg;
 #define CONF_URL_MAX 64
 #define CONF_USR_MAX 16
 typedef struct {
+  // wifi settings
   char ssid[CONF_SSID_MAX+1];
   char wpwd[CONF_PWD_MAX+1];
-  char mqtt[CONF_URL_MAX+1];
+  // mqtt settings
+  char mqtt_url[CONF_URL_MAX+1];
   char mqtt_topic[CONF_URL_MAX+1];
   char mqtt_user[CONF_USR_MAX+1];
   char mqtt_pass[CONF_PWD_MAX+1];
@@ -140,9 +149,43 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 char ssid[16] = "keg123456";
 const char *password = "k3Gat0rr";
 
+bool AP_Mode = true;
+
+WiFiClient client;
+PubSubClient mqttClient(client);
+IPAddress brokerIP;
+
 ESP8266WebServer server(80);
 
-bool AP_Mode = true;
+void mqtt_reconnect() {
+  // MQTT reconnect loop
+  if (!mqttClient.connected()) {
+    Serial.print("Connecting to MQTT... ");
+
+    // CONNECT WITH USER + PASSWORD
+    if (conf.mqtt_user[0]!='\0') {
+      //if (mqttClient.connect(idstr, mqttUser, mqttPassword)) {
+      if (mqttClient.connect(ssid, conf.mqtt_user, conf.mqtt_pass)) {
+        Serial.println("connected!");
+      }
+      else {
+        Serial.print("failed, rc=");
+        Serial.println(mqttClient.state());
+      }
+    }
+
+    // CONNECT (NO USER)
+    else {
+      if (mqttClient.connect(ssid)) {
+        Serial.println("connected!");
+      }
+      else {
+        Serial.print("failed, rc=");
+        Serial.println(mqttClient.state());
+      }
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -274,6 +317,20 @@ void setup() {
   server.begin();
   Serial.println("HTTP server started");
 
+  if (!AP_Mode) {
+    // Resolve broker hostname
+    if (conf.mqtt_url[0] != '\0') {
+      if (WiFi.hostByName(conf.mqtt_url, brokerIP)) {
+        Serial.print("MQTT server: ");
+        Serial.print(brokerIP);
+        Serial.print(":");
+        Serial.println(MQTT_PORT);
+        mqttClient.setServer(brokerIP, MQTT_PORT);
+      } else {
+        Serial.println("Resolve failed");
+      }
+    }
+  }
   // display wifi connection
   if (AP_Mode) {
     IPAddress dip = WiFi.softAPIP();
@@ -440,5 +497,52 @@ void loop() {
     break;
     default:
     break;
+  }
+
+  // MQTT
+  if (!AP_Mode) {
+    if (conf.mqtt_url[0] != '\0') {
+      static uint32_t pushM = now;
+      if ((now - pushM) >= MQTT_SEND_PERIOD_MS) {
+        if (!mqttClient.connected()) {
+          mqtt_reconnect();
+        }
+        if (mqttClient.connected()) {
+          mqtt_status = true;
+          /*String t1 = temp2string(temp[0], valid[0]);
+          String t2 = temp2string(temp[1], valid[1]);*/
+
+          // Create JSON payload
+          String json = "{";
+          json += "\"id\": ";
+          json += ssid;
+          //json += ",\"t2\": ";
+          //json += t2);
+          json += "\"}";
+
+
+          // publish json
+          Serial.print("Publish: ");
+          Serial.println(json);
+          mqttClient.publish(conf.mqtt_topic, json.c_str());
+
+          // publish
+          //mqttClient.publish(((String)conf.mqtt_topic + "/t1").c_str(), t1.c_str());
+          //mqttClient.publish(((String)conf.mqtt_topic + "/t2").c_str(), t2.c_str());
+          mqttClient.loop();
+
+          /*Serial.print(t1);
+          Serial.print(", ");
+          Serial.println(t2);*/
+        }
+        else {
+          mqtt_status = false;
+        }
+        pushM = millis();
+      }
+    }
+    else {
+      mqtt_status = false;
+    }
   }
 }
