@@ -13,56 +13,81 @@
     <link rel="manifest" href="img/site.webmanifest">
     <meta name="msapplication-TileColor" content="#feda3e">
     <meta name="theme-color" content="#feda3e">
-    <script src="jquery-3.5.1.min.js"></script>
     <script>
-        var keg = false;
-        function load() {
-		//url = "http://10.42.0.156/conf.json";
-		url = "conf.json";
-		$.ajax({
-			url: url,
-			dataType: 'json',
-			success: (function(data) {
-				if ( 'ssid' in data ) {
-					document.getElementById("wifi_ssid").value = data.ssid;
-					document.getElementById("wifi_pwd").placeholder = "******";
-				}
-			}),
-			error: (function() {
-			})
-		});
-		//url2 = "http://10.42.0.156/data.json";
-		url2 = "data.json";
-		$.ajax({
-			url: url2,
-			dataType: 'json',
-			success: (function(data) {
-				if ( 'sw' in data ) {
-					document.getElementById("fw_version").innerHTML = data.sw;
-				}
-			}),
-			error: (function() {
-			})
-		});
+
+var keg = false;
+
+function load() {
+	const url = "conf.json";
+	fetch(url)
+	.then(response => {
+		if (!response.ok)
+			throw new Error("Network response was not ok");
+		return response.json();
+	})
+	.then(data => {
+		if ('ssid' in data) {
+        	document.getElementById("wifi_ssid").value = data.ssid;
+        	document.getElementById("wifi_pwd").placeholder = "******";
+    	}
+    })
+    .catch(error => {
+    	console.error("Error loading conf.json:", error);
+    });
+
+	const url2 = "data.json";
+	fetch(url2)
+    .then(response => {
+	if (!response.ok) throw new Error("Network response was not ok");
+		return response.json();
+	})
+	.then(data => {
+		if ('sw' in data) {
+        	document.getElementById("fw_version").innerHTML = data.sw;
+      	}
+    })
+    .catch(error => {
+		console.error("Error loading data.json:", error);
+	});
+}
+
+function save(geto) {
+	const gkeys = Object.keys(geto);
+	const glen = gkeys.length;
+
+	if (glen === 0) {
+    	alert('Není co nastavovat!');
+    	return;
 	}
-        function save(geto) {
-		var gkeys = Object.keys(geto)
-		var glen = gkeys.length;
-		if (glen === 0) {
-			alert('Není co nastavovat!'); }
-		else {
-			$.post( 'do.php', geto, function(data, status) {
-			if ((status == 'success') && (data == 'OK')) {
-				alert('Nastavení OK');
-				//load();
-				window.location.href = 'config.html';
-			}
-			else
-				return;
-			});
-		}            
+
+  	// Připravit data pro POST
+	const formData = new FormData();
+	for (const key of gkeys) {
+    	formData.append(key, geto[key]);
 	}
-    </script>
+
+	fetch('do.php', {
+    	method: 'POST',
+    	body: formData
+	})
+    .then(response => {
+		if (!response.ok)
+			throw new Error('Network response was not ok');
+		return response.text();
+	})
+    .then(data => {
+    	if (data === 'OK') {
+        	alert('Nastavení OK');
+        	//load(); // pokud chceš znovu načíst data
+        	window.location.href = 'config.html';
+		}
+    })
+    .catch(error => {
+		console.error('Error saving settings:', error);
+    });
+}
+
+	</script>
 </head>
 <body onload="load();" class="b-config">
     <main>
@@ -78,7 +103,7 @@
 
                 </p>
                 <p class="line">
-                    <label for="wifi_password">Přihlašovací heslo</label>
+                    <label for="wifi_pwd">Přihlašovací heslo</label>
                     <input  id='wifi_pwd' class="field" placeholder='123456'/>
                 </p>
                 <p class="btns">
@@ -88,15 +113,6 @@
 		    <button id='rem_ssid' class="btn">Odstranit</button>
 		</p>
             </div>
-    	    <!--<div class="form">
-                <p class="line">
-                    <label for="device_key">Klíč zařízení</label>
-                    <input  id='device_key' class="field" placeholder='abCd3456' value=''/>
-                </p>
-                <p class="btns">
-                    <button id='save_key' class="btn">Potvrdit</button>
-                </p>
-	    </div>-->
 	    <div class="form">
 		    <h2>Váš Kegator &reg; nyní disponuje firmwarem <span id="fw_version">neznámým</span></h2>
 	    </div>
@@ -106,40 +122,40 @@
 
 	</div>
     </main>
-    
 
     <script>
-        $( "#save_ssid" ).click(function() {
-			var geto = {};
-            var name = $('#wifi_ssid').val();
-            if (! ((name == undefined) || (name == ""))) {
-				geto['wssid'] = name;
-				var pwd = $('#wifi_pwd').val();
-				if ((pwd == undefined) || (pwd == ""))
-					pwd = '';
-				geto['wpwd'] = pwd;
-			}
-			save(geto);
-		});
-		
-		$( "#save_key" ).click(function() {
-			var geto = {};
-            var dkey = $('#device_key').val();
-			if (! ((dkey == undefined) || (dkey == "")))
-				geto['dkey'] = dkey;
-			save(geto);
-		});
 
-	$( "#rem_ssid" ).click(function() {
-		var geto = {};
-		geto['wssid'] = "";
-		geto['wpwd'] = "";
-		save(geto);
-	});
+document.addEventListener("DOMContentLoaded", function() {
 
-        $( "#cancel" ).click(function() {
-            window.location.href = 'index.html';
-        });        
-    </script>
+	// Uložit WiFi SSID
+	document.getElementById("save_ssid").addEventListener("click", function() {
+    	const geto = {};
+    	const name = document.getElementById("wifi_ssid").value;
+    	if (name !== undefined && name !== "") {
+      		geto['wssid'] = name;
+      		let pwd = document.getElementById("wifi_pwd").value;
+      		if (pwd === undefined || pwd === "")
+				pwd = '';
+      		geto['wpwd'] = pwd;
+    	}
+    	save(geto);
+  	});
+
+  	// Odstranit WiFi SSID
+  	document.getElementById("rem_ssid").addEventListener("click", function() {
+    	const geto = {
+      		wssid: "",
+      		wpwd: ""
+    	};
+    	save(geto);
+  	});
+
+  	// Zrušit / návrat na index
+  	document.getElementById("cancel").addEventListener("click", function() {
+    	window.location.href = 'index.html';
+  	});
+});
+
+	</script>
 </body>
 </html>

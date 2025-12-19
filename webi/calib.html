@@ -13,37 +13,62 @@
     <meta name="msapplication-TileColor" content="#feda3e">
     <meta name="theme-color" content="#feda3e">
     <meta charset='utf-8'>
-    <script src="jquery-3.5.1.min.js"></script>
 
     <script>
-        function load() {
-            var url = "data.json";
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                success: (function(data) {
-                    var s = '<tr><th>Snímač</th><th>' + data.primary_unit + '</th><th>Akce</th></tr>';
-                    var cnt = 1;
-                    $.each( data.calib , function(key, value) {
-                        s += '<tr><td>' + value + '</td><td>' + key + '</td><td><button id="delcal" value="' + cnt + '">Smaž</button></td></tr>';
-                        cnt += 1;
-                    });
-                    $("#clbtab").html(s);
-                    $("#status").text('');
-                    $("#clbin").prop("placeholder", data.units);
-                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
-                    $('.raw').each(function(index, obj) { $(this).text(data.raw); });
-                    $('.units').each(function(index, obj) { $(this).text(data.units); });
-                }),
-                error: (function() {
-                    $("#status").text(' (offline)');
-                }),
-                complete: (function() {
-                    setTimeout(function() { load(); }, 500);
-                }),
-                timeout: 3000
-            });
+function load() {
+    const url = "data.json";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
+    fetch(url, { signal: controller.signal })
+    .then(response => {
+        if (!response.ok) throw new Error("Network error");
+        return response.json();
+    })
+    .then(data => {
+        // Tabulka kalibrace
+        let s = `<tr>
+                <th>Snímač</th>
+                <th>${data.primary_unit}</th>
+                <th>Akce</th>
+                </tr>`;
+        let cnt = 1;
+        for (const key in data.calib) {
+            const value = data.calib[key];
+            s += `<tr>
+                <td>${value}</td>
+                <td>${key}</td>
+                <td><button id="delcal" value="${cnt}">Smaž</button></td>
+                </tr>`;
+            cnt++;
         }
+
+        document.getElementById("clbtab").innerHTML = s;
+        document.getElementById("status").textContent = '';
+
+        // Placeholder
+        document.getElementById("clbin").placeholder = data.units;
+
+        // Texty podle tříd
+        document.querySelectorAll(".uprim")
+        .forEach(el => el.textContent = data.primary_unit);
+
+        document.querySelectorAll(".raw")
+        .forEach(el => el.textContent = data.raw);
+
+        document.querySelectorAll(".units")
+        .forEach(el => el.textContent = data.units);
+    })
+    .catch(err => {
+        document.getElementById("status").textContent = ' (offline)';
+        console.error("Load error:", err);
+    })
+    .finally(() => {
+        clearTimeout(timeoutId);
+        setTimeout(load, 500);
+    });
+}
     </script>
 </head>
 
@@ -79,29 +104,55 @@
     </main>
     
     <script>
-        $( "#done, #cancel" ).click(function() {
-           window.location.href = 'index.html';
-        });
-        $( "#setcal" ).click(function() {
-            var str = $("#clbin").val();
-			$.post( "do.php" , { addc: str }, function(data, status) {
-				if ((status == 'success') && (data == 'OK')) {
-					window.location.href = 'calib.html';
-				}
-				else
-					return;
-			});
-        });
-        $(document).on("click", "#delcal", function(){
-            var str = $(this).val();
-            $.post( "do.php", { delc: str }, function(data, status) {
-				if ((status == 'success') && (data == 'OK')) {
-					window.location.href = 'calib.html';
-				}
-				else
-					return;
-			});
-        });
+
+// Done + Cancel
+document.querySelectorAll("#done, #cancel").forEach(btn => {
+    btn.addEventListener("click", function () {
+        window.location.href = 'index.html';
+    });
+});
+
+// Nastavení kalibrace
+document.getElementById("setcal").addEventListener("click", function () {
+    const str = document.getElementById("clbin").value;
+
+    const formData = new FormData();
+    formData.append('addc', str);
+
+    fetch('do.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(resp => resp.text())
+    .then(data => {
+        if (data === 'OK') {
+            window.location.href = 'calib.html';
+        }
+    })
+    .catch(err => console.error('addc error:', err));
+});
+
+// Delegace kliků – mazání kalibrace
+document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "delcal") {
+        const str = e.target.value;
+
+        const formData = new FormData();
+        formData.append('delc', str);
+
+        fetch('do.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(resp => resp.text())
+        .then(data => {
+            if (data === 'OK') {
+                window.location.href = 'calib.html';
+            }
+        })
+        .catch(err => console.error('delc error:', err));
+    }
+});
     </script>
 </body>
 </html>

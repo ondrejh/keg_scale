@@ -13,60 +13,89 @@
     <link rel="manifest" href="img/site.webmanifest">
     <meta name="msapplication-TileColor" content="#feda3e">
     <meta name="theme-color" content="#feda3e">
-    <script src="jquery-3.5.1.min.js"></script>
-    <script src="jquery-ui-1.12.1.min.js"></script>
     <script>
-        var keg = false;
-        var secunit = '';
-        function load() {
-            var url = "data.json";
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                success: (function(data) {
-                    $("#units").text(data.units);
-                    $("#status").text('');
-                    $('.uprim').each(function(index, obj) { $(this).text(data.primary_unit); });
-                    secunit = data.secondary_unit;
-                    if ('keg' in data) {
-                        keg=false;
-						$('#keg_title').html(('name' in data.keg)?data.keg.name:'Odražení sudu');
-						if ('left' in data.keg) {
-							$('#keg_left_label').html('Zbývá: ');
-							$('#keg_left').html(data.keg.left);
-							$('#usec').html(' ' + secunit);
-						}
-						else {
-							$('#keg_left_label').html('');
-							$('#keg_left').html('');
-							$('#usec').html('');
-						}
-                        $('#begin_keg').html('Odrazit a ukončit');
-                        $('#begin_keg').addClass('finish');
-                        $('#keg_name_line').hide();
-                        $('#keg_volume_line').hide();
-                    } else {
-                        keg=true;
-                        $('#keg_left_label').html('');
-                        $('#keg_left').html('');
-                        $('#usec').html('');
-                        $('#keg_title').html('Nový sud');
-                        $('#begin_keg').html('Narazit teď');
-                        $('#keg_name_line').show();
-                        $('#keg_volume_line').show();
-                        $('#keg_volume_line .usec').text('piv');
-                        $('.top .weight').addClass('pt-big');
-                    }
-                }),
-                error: (function() {
-                    $("#status").text(' ( offline )');
-                }),
-                complete: (function() {
-                    setTimeout(function() { load(); }, 500);
-                }),
-                timeout: 3000
-            });
+
+var keg = false;
+var secunit = '';
+function load() {
+    const url = "data.json";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    fetch(url, { signal: controller.signal })
+    .then(response => {
+        if (!response.ok)
+            throw new Error('Network error');
+        return response.json();
+    })
+    .then(data => {
+        // Units + status
+        document.getElementById("units").textContent = data.units;
+        document.getElementById("status").textContent = '';
+
+        // Primary unit
+        document.querySelectorAll('.uprim')
+        .forEach(el => el.textContent = data.primary_unit);
+
+        // Secondary unit (globální proměnná)
+        window.secunit = data.secondary_unit;
+
+        if ('keg' in data) {
+            // Sud je naražen
+            window.keg = false;
+
+            document.getElementById("keg_title").innerHTML =
+                ('name' in data.keg) ? data.keg.name : 'Odražení sudu';
+
+            if ('left' in data.keg) {
+                document.getElementById("keg_left_label").innerHTML = 'Zbývá: ';
+                document.getElementById("keg_left").innerHTML = data.keg.left;
+                document.getElementById("usec").innerHTML = ' ' + secunit;
+            } else {
+                document.getElementById("keg_left_label").innerHTML = '';
+                document.getElementById("keg_left").innerHTML = '';
+                document.getElementById("usec").innerHTML = '';
+            }
+
+            const begin = document.getElementById("begin_keg");
+            begin.innerHTML = 'Odrazit a ukončit';
+            begin.classList.add('finish');
+
+            document.getElementById("keg_name_line").style.display = 'none';
+            document.getElementById("keg_volume_line").style.display = 'none';
+
+        } else {
+            // Nový sud
+            window.keg = true;
+
+            document.getElementById("keg_left_label").innerHTML = '';
+            document.getElementById("keg_left").innerHTML = '';
+            document.getElementById("usec").innerHTML = '';
+
+            document.getElementById("keg_title").innerHTML = 'Nový sud';
+
+            const begin = document.getElementById("begin_keg");
+            begin.innerHTML = 'Narazit teď';
+            begin.classList.remove('finish');
+
+            document.getElementById("keg_name_line").style.display = '';
+            document.getElementById("keg_volume_line").style.display = '';
+            document.querySelector('#keg_volume_line .usec').textContent = 'piv';
+
+            document.querySelectorAll('.top .weight')
+            .forEach(el => el.classList.add('pt-big'));
         }
+    })
+    .catch(err => {
+        document.getElementById("status").textContent = ' ( offline )';
+        console.error('Load error:', err);
+    })
+    .finally(() => {
+        clearTimeout(timeoutId);
+        setTimeout(load, 500);
+    });
+}
     </script>
 </head>
 <body onload="load();">
@@ -82,7 +111,8 @@
             </div>
             <p class="line" id='keg_name_line'>
                 <label for="keg_name">Budeme mu říkat</label>
-                <input id='keg_name' class="field" placeholder='Můj soudek 12&deg'/>
+                <input id='keg_name' class="field" placeholder='Můj soudek 12&deg' list="keglist">
+                <datalist id="keglist"></datalist></input>
             </p>
             <p class="line" id='keg_volume_line'>
                 <label for="keg_volume">Jeho obsah je</label>
@@ -98,65 +128,82 @@
     
 
     <script>
-        $( "#begin_keg" ).click(function() {
-			if (keg) {
-				var name = $('#keg_name').val();
-				if ((name == undefined) || (name == "")) {
-					alert('Tohle nejde. Sud musí mít přece nějaké jméno.');
-					return;
-				}
-				var vol = $('#keg_volume').val();
-				var intvol = Number(vol, 10);
-				console.log(intvol);
-				if (intvol <= 0) {
-					alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
-					return;
-				}
-				
-				$.post( "do.php" , { keg: name, vol: vol }, function(data, status) {
-					if ((status == 'success') && (data == 'OK')) {
-						alert('Je naražen sud ' + name + ', je v něm ' + vol + ' ' + secunit);
-						window.location.href = 'index.html';
-					}
-					else
-						return;
-				});
-			}
-			else { // not keg
-				$.post( "do.php" , { del: 'yes' }, function(data, status) {
-					if ((status == 'success') && (data == 'OK')) {
-						alert('Je po něm :-(');
-						window.location.href = 'index.html';
-					}
-					else
-						return;
-				});
-			}
-        });        
 
-        $( "#cancel" ).click(function() {
-            window.location.href = 'index.html';
-        });  
+document.getElementById("begin_keg").addEventListener("click", function () {
+    if (keg) {
+        const name = document.getElementById("keg_name").value;
+        if (!name) {
+            alert('Tohle nejde. Sud musí mít přece nějaké jméno.');
+            return;
+        }
 
-        $(document).ready(function() {
+        const vol = document.getElementById("keg_volume").value;
+        const intvol = Number(vol);
 
-            // naseptavac vyhledavani
-            $.ajax({
-                url: 'keglist.txt',
-                dataType: 'text',
-                success: function(data) {
-                    var autoCompleteData = data.split('\n');
-                    autoCompleteData.sort();
-                    console.log(autoCompleteData); // DEL
-                    $('#keg_name').autocomplete({
-                        source: function(request, response) {
-                            var results = $.ui.autocomplete.filter(autoCompleteData, request.term);
-                            response(results.slice(0, 10)); // 10 = prvnich deset vysledku
-                        }
-                    });
-                }
-            });
-        });      
+        if (!Number.isInteger(intvol) || intvol <= 0) {
+            alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('keg', name);
+        formData.append('vol', vol);
+
+        fetch('do.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(data => {
+            if (data === 'OK') {
+                alert(`Je naražen sud ${name}, je v něm ${vol} ${secunit}`);
+                window.location.href = 'index.html';
+            }
+        })
+        .catch(err => console.error('keg error:', err));
+
+    } else {
+        // odražení sudu
+        const formData = new FormData();
+        formData.append('del', 'yes');
+
+        fetch('do.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(data => {
+            if (data === 'OK') {
+                alert('Je po něm :-(');
+                window.location.href = 'index.html';
+            }
+        })
+        .catch(err => console.error('del error:', err));
+    }
+});
+
+document.getElementById("cancel").addEventListener("click", function () {
+    window.location.href = 'index.html';
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  fetch('keglist.txt')
+    .then(response => response.text())
+    .then(text => {
+      const list = document.getElementById("keglist");
+      const items = text.split('\n')
+                        .map(l => l.trim())
+                        .filter(l => l.length > 0)
+                        .sort();
+
+      items.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item;
+        list.appendChild(option);
+      });
+    })
+    .catch(err => console.error('autocomplete error:', err));
+});
     </script>
 </body>
 </html>

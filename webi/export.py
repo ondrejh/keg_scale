@@ -90,10 +90,10 @@ with open(FILENAME, 'w') as fout:
     print('  Embed binary img/android-chrome-192x192.png')
     fout.write(import_bin('img/android-chrome-192x192.png', end=None))
     
-    print('  Embed binary file jquery-3.5.1.min.js')
-    fout.write(import_bin('jquery-3.5.1.min.js', end=None))
-    print('  Embed binary file jquery-ui-1.12.1.min.js')
-    fout.write(import_bin('jquery-ui-1.12.1.min.js', end=None))
+    #print('  Embed binary file jquery-3.5.1.min.js')
+    #fout.write(import_bin('jquery-3.5.1.min.js', end=None))
+    #print('  Embed binary file jquery-ui-1.12.1.min.js')
+    #fout.write(import_bin('jquery-ui-1.12.1.min.js', end=None))
     fout.write('#endif __{}__\n'.format(HEADER))
     print('Done')
 
