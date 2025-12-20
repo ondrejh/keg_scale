@@ -152,7 +152,9 @@ void handleData() {
   //Serial.print("data");
   //Serial.print(" .. ");
 
-  char msg[1024];
+  String msg = build_data();
+
+  /*char msg[1024];
   int p = 0;
   p = sprintf(msg, "{\"devid\": \"%s\", \"sw\": \"%s\", ", ssid, sw_version);
   p += sprintf(&msg[p], "\"raw\": %d, \"units\": %0.1f, ", scale_avg, scale_units);
@@ -168,7 +170,7 @@ void handleData() {
   if (KEG) {
     p += sprintf(&msg[p], ", \"keg\": {\"name\": \"%s\", \"fullraw\": %d, \"volume\": %0.1f, \"left\": %0.1f}", keg.label, keg.fullraw, keg.volume, keg_left);
   }
-  p += sprintf(&msg[p], "}");
+  p += sprintf(&msg[p], "}");*/
 
   jsonHeader();
   server.send(200, "application/json", msg);

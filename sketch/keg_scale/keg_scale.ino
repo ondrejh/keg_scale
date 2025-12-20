@@ -7,6 +7,7 @@
  *   v0.4 .. no AP mode, display temperature and wifi info
  *   v0.4.1 .. no-cache on json 
  *   v0.5 .. no jquerry (much lighter webi)
+ *   v0.6 .. mqtt integration
  * 
  * done:
  *   individual device and ssid name
@@ -47,7 +48,7 @@
 #define DISP_TEMPERATURE_TIMEOUT 5000
 #define DISP_WIFI_TIMEOUT 3000
 
-const char* sw_version = "0.5";
+const char* sw_version = "0.6 alpha";
 
 OneWire  ds(D7);  // WEMOS D1 MINI, on pin D0 (a 4.7K resistor is necessary)
 //OneWire  ds(D8);  // on pin 10 (a 4.7K resistor is necessary)
@@ -509,31 +510,16 @@ void loop() {
         }
         if (mqttClient.connected()) {
           mqtt_status = true;
-          /*String t1 = temp2string(temp[0], valid[0]);
-          String t2 = temp2string(temp[1], valid[1]);*/
 
           // Create JSON payload
-          String json = "{";
-          json += "\"id\": ";
-          json += ssid;
-          //json += ",\"t2\": ";
-          //json += t2);
-          json += "\"}";
+          String json = build_mqtt(); 
 
 
           // publish json
-          Serial.print("Publish: ");
-          Serial.println(json);
+          //Serial.print("Publish: ");
+          //Serial.println(json);
           mqttClient.publish(conf.mqtt_topic, json.c_str());
-
-          // publish
-          //mqttClient.publish(((String)conf.mqtt_topic + "/t1").c_str(), t1.c_str());
-          //mqttClient.publish(((String)conf.mqtt_topic + "/t2").c_str(), t2.c_str());
           mqttClient.loop();
-
-          /*Serial.print(t1);
-          Serial.print(", ");
-          Serial.println(t2);*/
         }
         else {
           mqtt_status = false;
