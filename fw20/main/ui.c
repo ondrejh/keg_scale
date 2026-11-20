@@ -12,16 +12,10 @@ static const char *TAG = "ui";
 
 static lv_obj_t *s_gauge;
 
-static void level_anim_cb(void *obj, int32_t v)
-{
-    ui_gauge_set_level(obj, v);
-}
-
 /* Clean screen with the beer gauge as background (level 100 %). */
 static lv_obj_t *new_screen(void)
 {
     lv_obj_t *scr = lv_screen_active();
-    lv_anim_delete(s_gauge, level_anim_cb);
     lv_obj_clean(scr);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);    /* scrolling would block swipes */
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
@@ -32,10 +26,8 @@ static lv_obj_t *new_screen(void)
 
 void ui_set_level(int pct)
 {
-    if (s_gauge) {
-        lv_anim_delete(s_gauge, level_anim_cb);
+    if (s_gauge)
         ui_gauge_set_level(s_gauge, pct);
-    }
 }
 
 static lv_obj_t *new_label(lv_obj_t *parent, const char *text, const lv_font_t *font)
@@ -64,18 +56,6 @@ void ui_show_hello(void)
 {
     lv_obj_t *scr = new_screen();
     lv_obj_center(new_label(scr, "Hello world", &lv_font_montserrat_32));
-
-    /* demo: sweep the gauge 0 -> 100 -> 0 until real keg data is wired */
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, s_gauge);
-    lv_anim_set_exec_cb(&a, level_anim_cb);
-    lv_anim_set_values(&a, 0, 100);
-    lv_anim_set_duration(&a, 2000);
-    lv_anim_set_reverse_duration(&a, 2000);
-    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
-    lv_anim_start(&a);
 }
 
 /* New screen with a centred QR code (white quiet zone) and two labels below. */
