@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
 #include "board.h"
 #include "config.h"
 #include "tasks.h"
@@ -20,6 +21,13 @@ static void board_power_hold(void)
 void app_main(void)
 {
     board_power_hold();
+
+    esp_err_t nerr = nvs_flash_init();
+    if (nerr == ESP_ERR_NVS_NO_FREE_PAGES || nerr == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nerr = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(nerr);
 
     esp_err_t err = config_load();
     if (err == ESP_OK)
