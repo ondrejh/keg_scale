@@ -165,7 +165,7 @@ document.addEventListener("DOMContentLoaded", function() {
 		const mqtt_user = document.getElementById("mqtt_user").value;
 		if ((mqtt_user !== undefined) && (mqtt_user !== "")) {
 			geto['mqtt_user'] = mqtt_user;
-			const mqtt_pass = document.getElementById("mqtt_pass").value;
+			let mqtt_pass = document.getElementById("mqtt_pass").value;
 			if ((mqtt_pass === undefined) || (mqtt_pass === ""))
 				mqtt_pass = "";
 			geto['mqtt_pass'] = mqtt_pass;

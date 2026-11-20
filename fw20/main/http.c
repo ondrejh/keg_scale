@@ -247,6 +247,57 @@ static bool do_calib_del(const char *ctype)
     return scale_calib_delete((int)n - 1);
 }
 
+/* Copy an optional form field into dst. Absent: false, dst untouched.
+ * *bad set when present but too long. */
+static bool form_field(const char *ctype, const char *name, char *dst, size_t len, bool *bad)
+{
+    if (!form_has(s_form, ctype, name))
+        return false;
+    if (!form_get(s_form, ctype, name, dst, len)) {
+        ESP_LOGW(TAG, "%s too long", name);
+        *bad = true;
+    }
+    return true;
+}
+
+/* mqtt_url / mqtt_topic / mqtt_user (+ mqtt_pass): store MQTT settings, only
+ * fields present are changed ("" clears). Same rules as the original sketch;
+ * nothing uses them yet (no MQTT client). */
+static bool do_mqtt(const char *ctype)
+{
+    mqtt_config_t mc = g_mqtt_config;
+    bool bad = false;
+
+    form_field(ctype, "mqtt_topic", mc.topic, sizeof(mc.topic), &bad);
+    if (form_field(ctype, "mqtt_url", mc.url, sizeof(mc.url), &bad) && mc.url[0] && !mc.topic[0])
+        snprintf(mc.topic, sizeof(mc.topic), "home/keg/%s", g_dev_id);   /* sketch default */
+
+    char user[sizeof(mc.user)];
+    if (form_field(ctype, "mqtt_user", user, sizeof(user), &bad)) {
+        char pass[sizeof(mc.password)] = "";
+        form_field(ctype, "mqtt_pass", pass, sizeof(pass), &bad);
+        if (!pass[0] && user[0] && strcmp(user, g_mqtt_config.user) == 0)
+            strcpy(pass, g_mqtt_config.password);  /* "******" = keep */
+        strcpy(mc.user, user);
+        strcpy(mc.password, user[0] ? pass : "");
+    }
+    if (bad)
+        return false;
+
+    if (memcmp(&mc, &g_mqtt_config, sizeof(mc)) == 0) {
+        ESP_LOGI(TAG, "mqtt: unchanged");
+        return true;
+    }
+    g_mqtt_config = mc;
+    esp_err_t err = mqtt_config_save();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "mqtt: save failed (%s)", esp_err_to_name(err));
+        return false;
+    }
+    ESP_LOGI(TAG, "mqtt: \"%s\" topic \"%s\" user \"%s\" saved", mc.url, mc.topic, mc.user);
+    return true;
+}
+
 static esp_err_t do_post(httpd_req_t *req)
 {
     if (recv_body(req) != ESP_OK)
@@ -267,8 +318,10 @@ static esp_err_t do_post(httpd_req_t *req)
         ok = do_calib_del(ctype);
     } else if (form_has(s_form, ctype, "wssid")) {
         ok = do_wifi(ctype);
+    } else if (form_has(s_form, ctype, "mqtt_url") || form_has(s_form, ctype, "mqtt_topic") ||
+               form_has(s_form, ctype, "mqtt_user")) {
+        ok = do_mqtt(ctype);
     } else {
-        /* TODO: MQTT */
         ESP_LOGW(TAG, "do.php: unsupported request");
         ok = false;
     }
@@ -364,14 +417,24 @@ static esp_err_t data_get(httpd_req_t *req)
 /* Configuration for config.html (never includes passwords). */
 static esp_err_t conf_get(httpd_req_t *req)
 {
-    char buf[256];
+    char buf[512];
     size_t p = 0;
     jcat(buf, sizeof(buf), &p, "{");
     if (g_net_config.ssid[0]) {
         jcat(buf, sizeof(buf), &p, "\"ssid\":");
         jstr(buf, sizeof(buf), &p, g_net_config.ssid);
     }
-    /* TODO: mqtt_url, mqtt_topic, mqtt_user */
+    const struct { const char *key, *val; } mqtt[] = {
+        { "mqtt_url", g_mqtt_config.url },
+        { "mqtt_topic", g_mqtt_config.topic },
+        { "mqtt_user", g_mqtt_config.user },     /* never the password */
+    };
+    for (size_t i = 0; i < sizeof(mqtt) / sizeof(mqtt[0]); i++) {
+        if (!mqtt[i].val[0])
+            continue;
+        jcat(buf, sizeof(buf), &p, "%s\"%s\":", p > 1 ? "," : "", mqtt[i].key);
+        jstr(buf, sizeof(buf), &p, mqtt[i].val);
+    }
     jcat(buf, sizeof(buf), &p, "}");
     if (p >= sizeof(buf))
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "overflow");

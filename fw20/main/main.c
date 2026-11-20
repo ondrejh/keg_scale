@@ -36,6 +36,12 @@ void app_main(void)
     else
         ESP_LOGE(TAG, "load failed (%s)", esp_err_to_name(err));
 
+    err = mqtt_config_load();
+    if (err == ESP_OK)
+        ESP_LOGI(TAG, "mqtt \"%s\" topic \"%s\"", g_mqtt_config.url, g_mqtt_config.topic);
+    else if (err != ESP_ERR_NOT_FOUND)
+        ESP_LOGE(TAG, "mqtt load failed (%s)", esp_err_to_name(err));
+
     scale_init();
 
     BaseType_t ok;

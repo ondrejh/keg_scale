@@ -2,6 +2,7 @@
 #include "config.h"
 
 net_config_t g_net_config;
+mqtt_config_t g_mqtt_config;
 
 esp_err_t config_load(void)
 {
@@ -19,4 +20,23 @@ esp_err_t config_save(void)
 {
     return flash_data_save(CONFIG_SLOT_NET, NET_CONFIG_VERSION,
                            &g_net_config, sizeof(g_net_config));
+}
+
+esp_err_t mqtt_config_load(void)
+{
+    esp_err_t err = flash_data_load(CONFIG_SLOT_MQTT, MQTT_CONFIG_VERSION,
+                                    &g_mqtt_config, sizeof(g_mqtt_config));
+    if (err == ESP_OK) {
+        g_mqtt_config.url[sizeof(g_mqtt_config.url) - 1] = '\0';
+        g_mqtt_config.topic[sizeof(g_mqtt_config.topic) - 1] = '\0';
+        g_mqtt_config.user[sizeof(g_mqtt_config.user) - 1] = '\0';
+        g_mqtt_config.password[sizeof(g_mqtt_config.password) - 1] = '\0';
+    }
+    return err;
+}
+
+esp_err_t mqtt_config_save(void)
+{
+    return flash_data_save(CONFIG_SLOT_MQTT, MQTT_CONFIG_VERSION,
+                           &g_mqtt_config, sizeof(g_mqtt_config));
 }
