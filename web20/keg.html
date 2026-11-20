@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang='cz'>
+<head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Kegator - nový sud</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <meta name="theme-color" content="#feda3e">
+    <script>
+
+var keg = false;
+var secunit = '';
+function load() {
+    const url = "data.json";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    fetch(url, { signal: controller.signal })
+    .then(response => {
+        if (!response.ok)
+            throw new Error('Network error');
+        return response.json();
+    })
+    .then(data => {
+        // Units + status
+        document.getElementById("units").textContent = data.units;
+        document.getElementById("status").textContent = '';
+
+        // Primary unit
+        document.querySelectorAll('.uprim')
+        .forEach(el => el.textContent = data.primary_unit);
+
+        // Secondary unit (globální proměnná)
+        window.secunit = data.secondary_unit;
+
+        if ('keg' in data) {
+            // Sud je naražen
+            window.keg = false;
+
+            document.getElementById("keg_title").innerHTML =
+                ('name' in data.keg) ? data.keg.name : 'Odražení sudu';
+
+            if ('left' in data.keg) {
+                document.getElementById("keg_left_label").innerHTML = 'Zbývá: ';
+                document.getElementById("keg_left").innerHTML = data.keg.left;
+                document.getElementById("usec").innerHTML = ' ' + secunit;
+            } else {
+                document.getElementById("keg_left_label").innerHTML = '';
+                document.getElementById("keg_left").innerHTML = '';
+                document.getElementById("usec").innerHTML = '';
+            }
+
+            const begin = document.getElementById("begin_keg");
+            begin.innerHTML = 'Odrazit a ukončit';
+            begin.classList.add('finish');
+
+            document.getElementById("keg_name_line").style.display = 'none';
+            document.getElementById("keg_volume_line").style.display = 'none';
+
+        } else {
+            // Nový sud
+            window.keg = true;
+
+            document.getElementById("keg_left_label").innerHTML = '';
+            document.getElementById("keg_left").innerHTML = '';
+            document.getElementById("usec").innerHTML = '';
+
+            document.getElementById("keg_title").innerHTML = 'Nový sud';
+
+            const begin = document.getElementById("begin_keg");
+            begin.innerHTML = 'Narazit teď';
+            begin.classList.remove('finish');
+
+            document.getElementById("keg_name_line").style.display = '';
+            document.getElementById("keg_volume_line").style.display = '';
+            document.querySelector('#keg_volume_line .usec').textContent = 'piv';
+
+            document.querySelectorAll('.top .weight')
+            .forEach(el => el.classList.add('pt-big'));
+        }
+    })
+    .catch(err => {
+        document.getElementById("status").textContent = ' ( offline )';
+        console.error('Load error:', err);
+    })
+    .finally(() => {
+        clearTimeout(timeoutId);
+        setTimeout(load, 500);
+    });
+}
+    </script>
+</head>
+<body onload="load();">
+    <main>
+        <div class="container">
+            
+            <div class="top">
+                <h1><span id='keg_title'>Nový sud</span><span id='status'></span></h1>
+                <p class="weight weight-keg no-temp">
+                    Váha: <span id='units'>---</span> <span class='uprim'>units</span><br />
+                    <span id='keg_left_label'></span><strong><span id='keg_left'></span></strong><span id='usec'></span>
+                </p>
+            </div>
+            <p class="line" id='keg_name_line'>
+                <label for="keg_name">Budeme mu říkat</label>
+                <input id='keg_name' class="field" placeholder='Můj soudek 12&deg' list="keglist">
+                <datalist id="keglist"></datalist></input>
+            </p>
+            <p class="line" id='keg_volume_line'>
+                <label for="keg_volume">Jeho obsah je</label>
+                <input type='number' class="field" id='keg_volume'/> <span class='usec'></span>
+            </p>
+            <p class="btns">
+                <button id='begin_keg' class="btn">Narazit teď</button>
+                <button id='cancel' class="btn">Zrušit</button>
+            </p>
+
+        </div>
+    </main>
+    
+
+    <script>
+
+document.getElementById("begin_keg").addEventListener("click", function () {
+    if (keg) {
+        const name = document.getElementById("keg_name").value;
+        if (!name) {
+            alert('Tohle nejde. Sud musí mít přece nějaké jméno.');
+            return;
+        }
+
+        const vol = document.getElementById("keg_volume").value;
+        const intvol = Number(vol);
+
+        if (!Number.isInteger(intvol) || intvol <= 0) {
+            alert('Tohle nejde. Obsah sudu musí být přece kladné celé číslo.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('keg', name);
+        formData.append('vol', vol);
+
+        fetch('do.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(data => {
+            if (data === 'OK') {
+                alert(`Je naražen sud ${name}, je v něm ${vol} ${secunit}`);
+                window.location.href = 'index.html';
+            }
+        })
+        .catch(err => console.error('keg error:', err));
+
+    } else {
+        // odražení sudu
+        const formData = new FormData();
+        formData.append('del', 'yes');
+
+        fetch('do.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(data => {
+            if (data === 'OK') {
+                alert('Je po něm :-(');
+                window.location.href = 'index.html';
+            }
+        })
+        .catch(err => console.error('del error:', err));
+    }
+});
+
+document.getElementById("cancel").addEventListener("click", function () {
+    window.location.href = 'index.html';
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  fetch('keglist.txt')
+    .then(response => response.text())
+    .then(text => {
+      const list = document.getElementById("keglist");
+      const items = text.split('\n')
+                        .map(l => l.trim())
+                        .filter(l => l.length > 0)
+                        .sort();
+
+      items.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item;
+        list.appendChild(option);
+      });
+    })
+    .catch(err => console.error('autocomplete error:', err));
+});
+    </script>
+</body>
+</html>

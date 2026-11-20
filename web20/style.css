@@ -1,0 +1,503 @@
+/* Kegator web UI (plain CSS, formerly compiled from Sass) */
+
+:root {
+    --accent: #feda3e;        /* beer yellow */
+    --accent-dark: #eec201;
+    --text: #222;
+    --border: #bbb;
+    --bg: #fff;
+    --font: Tahoma, sans-serif;
+}
+
+/* ---- Base ---------------------------------------------------------- */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    background-color: var(--bg);
+    min-height: 100%;
+}
+
+body {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 0;
+    overflow-x: hidden;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.75;
+    background: var(--bg) url(img/bg.jpg) no-repeat fixed 50% calc(100% - 35px);
+    background-size: 100% auto;
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+    body {
+        background: var(--bg);
+    }
+}
+
+p {
+    margin: 0 0 1.5em;
+}
+
+strong, th {
+    font-weight: 700;
+}
+
+h1, h2 {
+    margin: 0 0 .75em;
+    color: var(--text);
+    font-family: var(--font);
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: .75rem;
+}
+
+h2 {
+    font-size: 20px;
+    line-height: 1.2632;
+}
+
+@media (min-width: 768px) {
+    h2 {
+        font-size: 38px;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+::selection {
+    color: #fff;
+    background: var(--accent);
+}
+
+/* ---- Layout -------------------------------------------------------- */
+
+.container {
+    position: relative;
+    max-width: 1024px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 15px 15px 35px;
+}
+
+/* grey footer bar */
+.container::after {
+    content: '';
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 35px;
+    border-top: 1px solid var(--border);
+    background-color: #ebebeb;
+}
+
+/* calib / config pages: no footer bar */
+.b-calib,
+.b-config {
+    background-position: 50% 100%;
+}
+
+.b-calib .container,
+.b-config .container {
+    padding-bottom: 15px;
+}
+
+.b-calib .container::after,
+.b-config .container::after {
+    display: none;
+}
+
+/* ---- Top bar ------------------------------------------------------- */
+
+.top {
+    display: flex;
+    justify-items: center;
+    min-height: 50px;
+    margin: -15px -15px 15px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg) url(img/bg.jpg) no-repeat 50% 10%;
+    background-size: 100% auto;
+    border-bottom: 2px solid var(--border);
+}
+
+.top h1 {
+    margin: auto 0;
+    padding-left: 15px;
+    color: var(--accent);
+    text-shadow: 1px 1px 2px #000;
+}
+
+.top h1 #status {
+    color: red;
+    font-size: 16px;
+    font-weight: 400;
+    text-shadow: none;
+}
+
+.top p {
+    margin: 0;
+    padding: 10px 15px;
+    font-size: 14px;
+    line-height: 1.25;
+    text-align: center;
+    background-color: var(--bg);
+    border-left: 1px solid var(--border);
+    border-radius: 30px 0 0 30px;
+}
+
+.top p.temp,
+.top p.weight.no-temp {
+    margin-left: auto;
+}
+
+.top p.temp {
+    margin-right: -25px;
+    padding-right: 35px;
+}
+
+.top p.temp #temp {
+    color: #32cd32;
+    font-weight: 700;
+}
+
+.top p.temp #temp.highTemp {
+    color: #d50014;
+}
+
+.top p.weight {
+    margin-right: -1px;
+    border-right: 1px solid var(--border);
+    box-shadow: -3px 0 5px rgba(0, 0, 0, .2);
+}
+
+.top p.weight #units {
+    font-weight: 700;
+}
+
+.top p.weight.pt-big {
+    padding-top: 16px;
+}
+
+@media (min-width: 575px) {
+    .top p {
+        padding-left: 25px;
+    }
+
+    .top p.temp {
+        padding-right: 45px;
+    }
+}
+
+/* ---- Keg card ------------------------------------------------------ */
+
+div.keg {
+    position: relative;
+    min-height: calc(100vh - 270px);
+    margin-bottom: 30px;
+    padding: 15px;
+    font-size: 5vw;
+    text-align: center;
+    background-color: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, .2);
+}
+
+/* barrel icon in the corner */
+div.keg::before {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 50px;
+    height: 50px;
+    opacity: .45;
+    background: var(--bg) url(img/barell.svg) no-repeat 0 0;
+    background-size: 50px auto;
+}
+
+div.keg.animation {
+    animation: 1.5s tada linear;
+}
+
+div.keg h2 {
+    position: relative;
+    z-index: 5;
+    min-height: 33px;
+    margin-bottom: 10px;
+    font-size: 8vw;
+}
+
+div.keg p {
+    margin-bottom: 0;
+}
+
+div.keg p.keg strong {
+    display: block;
+    font-size: 26px;
+    line-height: 1.3;
+}
+
+div.keg p.keg #keg_left {
+    font-size: 30vw;
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+    div.keg {
+        font-size: 5vh;
+        margin-bottom: 15px;
+    }
+
+    div.keg h2 {
+        font-size: 8vh;
+    }
+
+    div.keg p.keg strong {
+        display: inline;
+    }
+
+    div.keg p.keg #keg_left {
+        font-size: 20vh;
+        line-height: 1;
+    }
+}
+
+@media (min-width: 992px) {
+    div.keg {
+        font-size: 26px;
+        padding-top: 30px;
+    }
+
+    div.keg h2 {
+        font-size: 36px;
+    }
+
+    div.keg p.keg #keg_left {
+        font-size: 130px;
+    }
+}
+
+/* ---- Buttons ------------------------------------------------------- */
+
+.btns {
+    margin: 0;
+    text-align: center;
+}
+
+.btns + .line,
+.btns + h2,
+.form + .btns {
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 10px 20px;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+    outline: 0 !important;
+    background-color: var(--accent);
+    border: 2px solid var(--accent-dark);
+    border-radius: 10px;
+    box-shadow: 0 0 0 5px #fff;
+}
+
+.btn:hover,
+.btn:focus,
+.btn:active {
+    color: var(--text);
+    background-color: var(--accent-dark);
+}
+
+.btns .btn {
+    display: inline-block;
+    margin: 0 10px 20px;
+}
+
+.btns .btn:last-of-type,
+.btn.new-keg {
+    margin-bottom: 0;
+}
+
+.btn.new-keg {
+    margin-top: calc((50vh - 30px) / 2);
+    animation: 2s pulse linear infinite;
+}
+
+.btn.finish {
+    margin-top: calc((50vh - 60px) / 2);
+}
+
+/* "Kalibrace" / "Nastavení" links in the footer bar */
+.btn#calibrate,
+.btn#wifiset {
+    display: inline-block;
+    position: fixed;
+    bottom: 5px;
+    right: 15px;
+    z-index: 10;
+    min-width: 20px;
+    width: auto;
+    margin: 0;
+    padding: 5px;
+    color: #555;
+    font-size: 15px;
+    font-weight: 400;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.btn#wifiset {
+    right: auto;
+    left: 15px;
+}
+
+.btn#calibrate:hover, .btn#calibrate:focus, .btn#calibrate:active,
+.btn#wifiset:hover, .btn#wifiset:focus, .btn#wifiset:active {
+    text-decoration: none;
+    background: none;
+    border: none;
+}
+
+#cancel,
+#delcal {
+    background-color: #ccc;
+}
+
+#cancel {
+    border-color: #999;
+}
+
+#cancel:hover, #cancel:focus, #cancel:active,
+#delcal:hover, #delcal:focus, #delcal:active {
+    background-color: #999;
+}
+
+/* small "Smaž" button in calibration table */
+#delcal {
+    padding: 3px 15px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #999;
+    border-radius: 5px;
+    box-shadow: none;
+}
+
+/* ---- Forms --------------------------------------------------------- */
+
+.form {
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.form p {
+    margin-bottom: 15px;
+}
+
+.form p:last-of-type {
+    margin-bottom: 0;
+}
+
+.line label {
+    display: block;
+    font-size: 16px;
+}
+
+.field {
+    width: 100%;
+    height: 40px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.25;
+    outline: 0 !important;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+.field#clbin,
+.field#keg_volume {
+    width: calc(100% - 40px);
+}
+
+.field:hover {
+    border-color: #aeaeae;
+}
+
+.field:focus,
+.field:active {
+    border-color: #a2a2a2;
+    box-shadow: 0 0 0 1px #a2a2a2;
+}
+
+/* ---- Calibration table --------------------------------------------- */
+
+table {
+    width: 100%;
+    margin: 0 0 25px;
+    font-size: 16px;
+    background-color: var(--bg);
+    border: 2px solid var(--border);
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 3px 8px;
+    font-size: 15px;
+    text-align: left;
+    vertical-align: top;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+}
+
+th:nth-child(2), td:nth-child(2) {
+    text-align: right;
+}
+
+th:nth-child(3), td:nth-child(3) {
+    text-align: center;
+}
+
+/* ---- Animations ---------------------------------------------------- */
+
+@keyframes tada {
+    0%             { transform: scale(1); }
+    10%, 20%       { transform: scale(.9) rotate(-3deg); }
+    30%, 50%, 70%, 90% { transform: scale(1.1) rotate(3deg); }
+    40%, 60%, 80%  { transform: scale(1.1) rotate(-3deg); }
+    100%           { transform: scale(1) rotate(0); }
+}
+
+@keyframes pulse {
+    0%, 50%, 100%  { transform: scale(1); }
+    25%            { transform: scale(1.05); }
+    75%            { transform: scale(.95); }
+}

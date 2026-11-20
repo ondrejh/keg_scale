@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang='cz'>
+<head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Kegator</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <meta name="theme-color" content="#feda3e">
+    <script>
+
+var keg = false;
+
+function load() {
+    const url = "data.json";
+
+    // Nastavení timeoutu pro fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    fetch(url, { signal: controller.signal })
+    .then(response => {
+        if (!response.ok)
+            throw new Error("Network response was not ok");
+    return response.json();
+    })
+    .then(data => {
+        // Units
+        document.getElementById("units").textContent = data.units;
+
+        // Temp
+        if ('temp' in data) {
+            const tempEl = document.getElementById("temp");
+            tempEl.textContent = data.temp;
+            if (data.temp > 20) {
+                tempEl.classList.add('highTemp');
+            } else {
+                tempEl.classList.remove('highTemp');
+            }
+
+            document.querySelectorAll(".temp").forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll(".weight").forEach(el => el.classList.remove('no-temp'));
+        } else {
+            document.querySelectorAll(".temp").forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll(".weight").forEach(el => el.classList.add('no-temp'));
+        }
+
+        // Status
+        document.getElementById("status").textContent = '';
+
+        // Primary / secondary units
+        document.querySelectorAll(".uprim").forEach(el => el.textContent = data.primary_unit);
+        document.querySelectorAll(".usec").forEach(el => el.textContent = data.secondary_unit);
+
+        // Keg info
+        if ('keg' in data) {
+            window.keg = true;
+            document.getElementById("keg_left").textContent = data.keg.left;
+            document.getElementById("keg_volume").textContent = data.keg.volume;
+            document.getElementById("keg_label").textContent = data.keg.name;
+            document.getElementById("begin").innerHTML = 'Odrazit';
+            document.querySelectorAll(".keg").forEach(el => el.style.display = '');
+        } else {
+            window.keg = false;
+            const beginEl = document.getElementById("begin");
+            beginEl.innerHTML = 'Nový sud';
+            beginEl.classList.add('new-keg');
+            document.querySelectorAll(".keg").forEach(el => el.style.display = 'none');
+        }
+    })
+    .catch(error => {
+        document.getElementById("status").textContent = ' (offline)';
+        console.error("Error loading data.json:", error);
+    })
+    .finally(() => {
+        setTimeout(load, 500);
+        clearTimeout(timeoutId);
+    });
+}
+    </script>
+</head>
+<body onload="load();">
+    <main>
+        <div class="container">
+            
+            <div class="top">
+                <h1>Kegator<span id='status'></span></h1>
+                <p class="temp">Teplota<br /><span id='temp'>---</span> °C</p>
+                <p class="weight">Váha<br /><span id='units'>---</span> <span class='uprim'>units</span></p>
+            </div>
+            <div class='keg animation'>
+                <h2 id='keg_name'><span id='keg_label'></span></h2>
+                <p class='keg'>
+                    V sudu zbývá <strong><span id='keg_left'></span> <span class='usec'></span></strong> z celkových <span id='keg_volume'></span> <span class='usec'></span>.
+                </p>
+            </div>
+            <p class="btns">
+                <button id='begin' class="btn">Nový sud</button>
+                <button id='wifiset' class="btn">Nastavení</button>
+                <button id='calibrate' class="btn">Kalibrace</button>
+            </p>
+                
+        </div>
+    </main>
+    
+
+    <script>
+
+document.getElementById("begin").addEventListener("click", function () {
+    if (keg) {
+        if (confirm('Skutečně chceš odrazit tento sud?')) {
+            window.location.href = 'keg.html';
+        } else {
+            alert('No proto ...');
+        }
+    } else {
+        window.location.href = 'keg.html';
+    }
+});
+
+document.getElementById("calibrate").addEventListener("click", function () {
+    const msg = 'Opravdu chceš kalibrovat' + (keg ? ' když je naraženo' : '') + '?';
+    if (confirm(msg)) {
+        window.location.href = 'calib.html';
+    } else {
+        alert('OK. Funguje to, nesahej na to!');
+    }
+});
+
+document.getElementById("wifiset").addEventListener("click", function () {
+    if (confirm('Opravdu chceš něco nastavovat?')) {
+        window.location.href = 'config.html';
+    } else {
+        alert('OK. Funguje to, nesahej na to!');
+    }
+});
+    </script>
+</body>
+</html>
