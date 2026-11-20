@@ -23,6 +23,7 @@ static lv_obj_t *new_screen(void)
     lv_obj_t *scr = lv_screen_active();
     lv_anim_delete(s_gauge, level_anim_cb);
     lv_obj_clean(scr);
+    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);    /* scrolling would block swipes */
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
     s_gauge = ui_gauge_create(scr);
     ui_gauge_set_level(s_gauge, 100);
@@ -77,29 +78,45 @@ void ui_show_hello(void)
     lv_anim_start(&a);
 }
 
-void ui_show_ap(const char *ssid, const char *password, const char *ip)
+/* New screen with a centred QR code (white quiet zone) and two labels below. */
+static void show_qr(const char *payload, const char *title, const char *subtitle)
 {
-    char s[2 * 32 + 1], p[2 * 64 + 1], payload[sizeof(s) + sizeof(p) + 24];
-    wifi_qr_escape(s, sizeof(s), ssid);
-    wifi_qr_escape(p, sizeof(p), password);
-    int len = snprintf(payload, sizeof(payload), "WIFI:T:WPA;S:%s;P:%s;;", s, p);
-
     lv_obj_t *scr = new_screen();
 
     lv_obj_t *qr = lv_qrcode_create(scr);
     lv_qrcode_set_size(qr, QR_SIZE);
     lv_qrcode_set_dark_color(qr, lv_color_black());
     lv_qrcode_set_light_color(qr, lv_color_white());
-    if (lv_qrcode_update(qr, payload, len) != LV_RESULT_OK)
+    if (lv_qrcode_update(qr, payload, strlen(payload)) != LV_RESULT_OK)
         ESP_LOGE(TAG, "qr encode failed");
-    /* white quiet zone around the code */
     lv_obj_set_style_border_color(qr, lv_color_white(), 0);
     lv_obj_set_style_border_width(qr, QR_BORDER, 0);
     lv_obj_align(qr, LV_ALIGN_CENTER, 0, -30);
 
-    lv_obj_t *l_ssid = new_label(scr, ssid, &lv_font_montserrat_32);
-    lv_obj_align_to(l_ssid, qr, LV_ALIGN_OUT_BOTTOM_MID, 0, 14);
+    lv_obj_t *l_title = new_label(scr, title, &lv_font_montserrat_32);
+    lv_obj_align_to(l_title, qr, LV_ALIGN_OUT_BOTTOM_MID, 0, 14);
 
-    lv_obj_t *l_ip = new_label(scr, ip, &lv_font_montserrat_16);
-    lv_obj_align_to(l_ip, l_ssid, LV_ALIGN_OUT_BOTTOM_MID, 0, 6);
+    lv_obj_t *l_sub = new_label(scr, subtitle, &lv_font_montserrat_16);
+    lv_obj_align_to(l_sub, l_title, LV_ALIGN_OUT_BOTTOM_MID, 0, 6);
+}
+
+void ui_show_ap(const char *ssid, const char *password, const char *ip)
+{
+    char s[2 * 32 + 1], p[2 * 64 + 1], payload[sizeof(s) + sizeof(p) + 24];
+    wifi_qr_escape(s, sizeof(s), ssid);
+    wifi_qr_escape(p, sizeof(p), password);
+    snprintf(payload, sizeof(payload), "WIFI:T:WPA;S:%s;P:%s;;", s, p);
+    show_qr(payload, ssid, ip);
+}
+
+void ui_show_webi(const char *ip)
+{
+    if (!ip) {
+        lv_obj_t *scr = new_screen();
+        lv_obj_center(new_label(scr, "No network", &lv_font_montserrat_32));
+        return;
+    }
+    char url[32];
+    snprintf(url, sizeof(url), "http://%s/", ip);
+    show_qr(url, "Web", url);
 }

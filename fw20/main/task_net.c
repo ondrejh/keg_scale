@@ -38,6 +38,25 @@ static void make_dev_id(void)
     ESP_LOGI(TAG, "device id %s (mac " MACSTR ")", g_dev_id, MAC2STR(mac));
 }
 
+bool net_get_ip(char *buf, size_t len)
+{
+    switch (s_mode) {
+    case NET_MODE_AP:
+        snprintf(buf, len, "%s", AP_IP);
+        return true;
+    case NET_MODE_STA: {
+        esp_netif_ip_info_t ip;
+        esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        if (!netif || esp_netif_get_ip_info(netif, &ip) != ESP_OK || ip.ip.addr == 0)
+            return false;
+        snprintf(buf, len, IPSTR, IP2STR(&ip.ip));
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
 /* ---------------- STA ---------------- */
 
 static void sta_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)

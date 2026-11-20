@@ -9,6 +9,7 @@
 #include "lvgl.h"
 #include "board.h"
 #include "display.h"
+#include "touch.h"
 
 static const char *TAG = "display";
 
@@ -35,6 +36,12 @@ static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = {
 
 static esp_lcd_panel_io_handle_t s_io;
 static esp_lcd_panel_handle_t s_panel;
+static lv_indev_t *s_indev;
+
+lv_indev_t *display_get_indev(void)
+{
+    return s_indev;
+}
 
 /* QSPI command word: 0x02 = write opcode, cmd in bits 15..8 */
 static void lcd_tx_param(uint8_t cmd, uint8_t param)
@@ -70,6 +77,18 @@ static void rounder_cb(lv_event_t *e)
     a->y1 &= ~1;
     a->x2 |= 1;
     a->y2 |= 1;
+}
+
+static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    uint16_t x, y;
+    if (touch_read(&x, &y)) {
+        data->point.x = x;
+        data->point.y = y;
+        data->state = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;  /* LVGL keeps the last point */
+    }
 }
 
 static uint32_t tick_cb(void)
@@ -134,6 +153,13 @@ esp_err_t display_init(void)
     lv_display_set_buffers(disp, buf1, buf2, LVGL_BUF_SIZE, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(disp, flush_cb);
     lv_display_add_event_cb(disp, rounder_cb, LV_EVENT_INVALIDATE_AREA, NULL);
+
+    if (touch_init() == ESP_OK) {
+        s_indev = lv_indev_create();
+        lv_indev_set_type(s_indev, LV_INDEV_TYPE_POINTER);
+        lv_indev_set_read_cb(s_indev, touch_read_cb);
+        lv_indev_set_display(s_indev, disp);
+    }
 
     return ESP_OK;
 }

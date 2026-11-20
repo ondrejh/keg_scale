@@ -1,5 +1,5 @@
 idf_component_register(SRCS "main.c" "task_disp.c" "task_scale.c" "task_net.c"
-                            "flash_data.c" "config.c" "display.c" "ui.c" "ui_gauge.c" "http.c" "scale.c"
+                            "flash_data.c" "config.c" "display.c" "ui.c" "ui_gauge.c" "ui_input.c" "touch.c" "http.c" "scale.c"
                        INCLUDE_DIRS "."
                        EMBED_FILES "img/foam.rgb565" "img/beer.rgb565" "img/edge.rgb565a8")
 
