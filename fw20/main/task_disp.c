@@ -99,6 +99,10 @@ static void idle_check(void)
 
     if (!s_dimmed && want_dim) {
         s_dimmed = true;
+        if (s_screen != SCR_MAIN) {     /* leave secondary pages when idle */
+            s_screen = SCR_MAIN;
+            show_screen();
+        }
         fade_to(g_disp_config.dim, FADE_OUT_MS);
     } else if (s_dimmed && !want_dim) {
         s_dimmed = false;
