@@ -3,25 +3,45 @@
 #include "esp_log.h"
 #include "lvgl.h"
 #include "ui.h"
+#include "ui_gauge.h"
 
 static const char *TAG = "ui";
 
 #define QR_SIZE     240
 #define QR_BORDER   12
 
+static lv_obj_t *s_gauge;
+
+static void level_anim_cb(void *obj, int32_t v)
+{
+    ui_gauge_set_level(obj, v);
+}
+
+/* Clean screen with the beer gauge as background (level 100 %). */
 static lv_obj_t *new_screen(void)
 {
     lv_obj_t *scr = lv_screen_active();
+    lv_anim_delete(s_gauge, level_anim_cb);
     lv_obj_clean(scr);
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    s_gauge = ui_gauge_create(scr);
+    ui_gauge_set_level(s_gauge, 100);
     return scr;
+}
+
+void ui_set_level(int pct)
+{
+    if (s_gauge) {
+        lv_anim_delete(s_gauge, level_anim_cb);
+        ui_gauge_set_level(s_gauge, pct);
+    }
 }
 
 static lv_obj_t *new_label(lv_obj_t *parent, const char *text, const lv_font_t *font)
 {
     lv_obj_t *l = lv_label_create(parent);
     lv_label_set_text(l, text);
-    lv_obj_set_style_text_color(l, lv_color_white(), 0);
+    lv_obj_set_style_text_color(l, lv_color_black(), 0);   /* bright background */
     lv_obj_set_style_text_font(l, font, 0);
     return l;
 }
@@ -43,6 +63,18 @@ void ui_show_hello(void)
 {
     lv_obj_t *scr = new_screen();
     lv_obj_center(new_label(scr, "Hello world", &lv_font_montserrat_32));
+
+    /* demo: sweep the gauge 0 -> 100 -> 0 until real keg data is wired */
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s_gauge);
+    lv_anim_set_exec_cb(&a, level_anim_cb);
+    lv_anim_set_values(&a, 0, 100);
+    lv_anim_set_duration(&a, 2000);
+    lv_anim_set_reverse_duration(&a, 2000);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_start(&a);
 }
 
 void ui_show_ap(const char *ssid, const char *password, const char *ip)
@@ -60,7 +92,7 @@ void ui_show_ap(const char *ssid, const char *password, const char *ip)
     lv_qrcode_set_light_color(qr, lv_color_white());
     if (lv_qrcode_update(qr, payload, len) != LV_RESULT_OK)
         ESP_LOGE(TAG, "qr encode failed");
-    /* white quiet zone around the code (screen background is black) */
+    /* white quiet zone around the code */
     lv_obj_set_style_border_color(qr, lv_color_white(), 0);
     lv_obj_set_style_border_width(qr, QR_BORDER, 0);
     lv_obj_align(qr, LV_ALIGN_CENTER, 0, -30);

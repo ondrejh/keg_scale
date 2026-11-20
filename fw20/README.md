@@ -27,6 +27,8 @@ idf.py -p /dev/ttyACM0 flash monitor
 
 - `main/board.h` – board pin map (from Waveshare demos)
 - `partitions.csv` – nvs, 2x 4 MB OTA app slots, ~8 MB LittleFS `storage`
+- `tools/mkbg.py` – cuts the display gauge textures (`main/img/*`) out of
+  `web20/img/bg.jpg`; rerun with system python3 (Pillow, numpy) after it changes
 - `../web20` – web UI; packed into the `storage` LittleFS image at build time and
   flashed together with `idf.py flash`
 - `sdkconfig.defaults` – target, flash size, partition table
