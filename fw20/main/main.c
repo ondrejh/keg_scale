@@ -42,6 +42,12 @@ void app_main(void)
     else if (err != ESP_ERR_NOT_FOUND)
         ESP_LOGE(TAG, "mqtt load failed (%s)", esp_err_to_name(err));
 
+    err = disp_config_load();
+    if (err != ESP_OK && err != ESP_ERR_NOT_FOUND)
+        ESP_LOGE(TAG, "display config load failed (%s)", esp_err_to_name(err));
+    ESP_LOGI(TAG, "display dim %u after %lu ms", g_disp_config.dim,
+             (unsigned long)g_disp_config.idle_ms);
+
     scale_init();
 
     BaseType_t ok;

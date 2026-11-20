@@ -298,6 +298,39 @@ static bool do_mqtt(const char *ctype)
     return true;
 }
 
+/* disp_timeout=<s> (0 = never) and/or disp_dim=<%>: display idle dimming.
+ * Applied immediately (task_disp reads g_disp_config). */
+static bool do_display(const char *ctype)
+{
+    disp_config_t dc = g_disp_config;
+    char v[12];
+    long n;
+
+    if (form_has(s_form, ctype, "disp_timeout")) {
+        if (!form_get(s_form, ctype, "disp_timeout", v, sizeof(v)) || !parse_int(v, &n) ||
+            n < 0 || n > 3600)
+            return false;
+        dc.idle_ms = (uint32_t)n * 1000;
+    }
+    if (form_has(s_form, ctype, "disp_dim")) {
+        if (!form_get(s_form, ctype, "disp_dim", v, sizeof(v)) || !parse_int(v, &n) ||
+            n < 0 || n > 100)
+            return false;
+        dc.dim = (uint8_t)((n * 255 + 50) / 100);
+    }
+
+    if (memcmp(&dc, &g_disp_config, sizeof(dc)) == 0)
+        return true;
+    g_disp_config = dc;
+    esp_err_t err = disp_config_save();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "display: save failed (%s)", esp_err_to_name(err));
+        return false;
+    }
+    ESP_LOGI(TAG, "display: dim %u after %lu s", dc.dim, (unsigned long)(dc.idle_ms / 1000));
+    return true;
+}
+
 static esp_err_t do_post(httpd_req_t *req)
 {
     if (recv_body(req) != ESP_OK)
@@ -321,6 +354,8 @@ static esp_err_t do_post(httpd_req_t *req)
     } else if (form_has(s_form, ctype, "mqtt_url") || form_has(s_form, ctype, "mqtt_topic") ||
                form_has(s_form, ctype, "mqtt_user")) {
         ok = do_mqtt(ctype);
+    } else if (form_has(s_form, ctype, "disp_timeout") || form_has(s_form, ctype, "disp_dim")) {
+        ok = do_display(ctype);
     } else {
         ESP_LOGW(TAG, "do.php: unsupported request");
         ok = false;
@@ -435,6 +470,9 @@ static esp_err_t conf_get(httpd_req_t *req)
         jcat(buf, sizeof(buf), &p, "%s\"%s\":", p > 1 ? "," : "", mqtt[i].key);
         jstr(buf, sizeof(buf), &p, mqtt[i].val);
     }
+    /* display: timeout in s, dim level in % of full brightness */
+    jcat(buf, sizeof(buf), &p, "%s\"disp_timeout\":%lu,\"disp_dim\":%u", p > 1 ? "," : "",
+         (unsigned long)(g_disp_config.idle_ms / 1000), (unsigned)((g_disp_config.dim * 100 + 127) / 255));
     jcat(buf, sizeof(buf), &p, "}");
     if (p >= sizeof(buf))
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "overflow");

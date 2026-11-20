@@ -1,8 +1,10 @@
 #include "flash_data.h"
 #include "config.h"
+#include "settings.h"
 
 net_config_t g_net_config;
 mqtt_config_t g_mqtt_config;
+disp_config_t g_disp_config = { .idle_ms = IDLE_DIM_MS, .dim = BRIGHT_DIM };
 
 esp_err_t config_load(void)
 {
@@ -39,4 +41,19 @@ esp_err_t mqtt_config_save(void)
 {
     return flash_data_save(CONFIG_SLOT_MQTT, MQTT_CONFIG_VERSION,
                            &g_mqtt_config, sizeof(g_mqtt_config));
+}
+
+esp_err_t disp_config_load(void)
+{
+    disp_config_t dc;
+    esp_err_t err = flash_data_load(CONFIG_SLOT_DISP, DISP_CONFIG_VERSION, &dc, sizeof(dc));
+    if (err == ESP_OK)
+        g_disp_config = dc;
+    return err;     /* on error g_disp_config keeps the defaults */
+}
+
+esp_err_t disp_config_save(void)
+{
+    return flash_data_save(CONFIG_SLOT_DISP, DISP_CONFIG_VERSION,
+                           &g_disp_config, sizeof(g_disp_config));
 }

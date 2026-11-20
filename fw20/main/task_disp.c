@@ -5,6 +5,7 @@
 #include "display.h"
 #include "net.h"
 #include "settings.h"
+#include "config.h"
 #include "ui.h"
 #include "ui_input.h"
 #include "scale.h"
@@ -57,12 +58,14 @@ static void show_screen(void)
 }
 
 /* ---- idle dimming: fade down after IDLE_DIM_MS without touch ---- */
-/* IDLE_DIM_MS, BRIGHT_ON, BRIGHT_DIM: settings.h */
+/* BRIGHT_ON: settings.h; timeout and dim level: g_disp_config (web config page,
+ * defaults IDLE_DIM_MS / BRIGHT_DIM from settings.h) */
 #define FADE_OUT_MS     1500
 #define FADE_IN_MS      200
 #define WAKE_IGNORE_MS  500     /* the waking touch must not swipe/tap too */
 
 static int32_t s_bright = BRIGHT_ON;
+static int32_t s_bright_target = BRIGHT_ON;
 static bool s_dimmed;
 static uint32_t s_wake_ms;
 
@@ -76,6 +79,7 @@ static void bright_anim_cb(void *var, int32_t v)
 
 static void fade_to(int32_t level, uint32_t ms)
 {
+    s_bright_target = level;
     lv_anim_delete(&s_bright, bright_anim_cb);
     lv_anim_t a;
     lv_anim_init(&a);
@@ -90,13 +94,19 @@ static void fade_to(int32_t level, uint32_t ms)
 static void idle_check(void)
 {
     uint32_t idle = lv_display_get_inactive_time(NULL);
-    if (!s_dimmed && idle >= IDLE_DIM_MS) {
+    uint32_t timeout = g_disp_config.idle_ms;   /* may change from the web */
+    bool want_dim = timeout && idle >= timeout;
+
+    if (!s_dimmed && want_dim) {
         s_dimmed = true;
-        fade_to(BRIGHT_DIM, FADE_OUT_MS);
-    } else if (s_dimmed && idle < IDLE_DIM_MS) {
+        fade_to(g_disp_config.dim, FADE_OUT_MS);
+    } else if (s_dimmed && !want_dim) {
         s_dimmed = false;
-        s_wake_ms = lv_tick_get();
+        if (idle < WAKE_IGNORE_MS)              /* woken by touch, not by config */
+            s_wake_ms = lv_tick_get();
         fade_to(BRIGHT_ON, FADE_IN_MS);
+    } else if (s_dimmed && s_bright_target != g_disp_config.dim) {
+        fade_to(g_disp_config.dim, FADE_IN_MS); /* level changed on the web */
     }
 }
 

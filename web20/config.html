@@ -33,6 +33,10 @@ function load() {
 			document.getElementById("mqtt_user").value = data.mqtt_user;
 			document.getElementById("mqtt_pass").placeholder = "******";
 		}
+		if ('disp_timeout' in data)
+			document.getElementById("disp_timeout").value = data.disp_timeout;
+		if ('disp_dim' in data)
+			document.getElementById("disp_dim").value = data.disp_dim;
     })
     .catch(error => {
     	console.error("Error loading conf.json:", error);
@@ -140,6 +144,20 @@ function save(geto) {
 					<button id="rem_mqtt" class="btn">Odstranit</button>
 				</p>
 			</div>
+			<div class="form">
+				<h2>Displej</h2>
+				<p class="line">
+					<label for="disp_timeout">Ztmavit po (s, 0 = nikdy)</label>
+					<input id="disp_timeout" class="field" type="number" min="0" max="3600" placeholder="15"/>
+				</p>
+				<p class="line">
+					<label for="disp_dim">Jas po ztmavení (%)</label>
+					<input id="disp_dim" class="field" type="number" min="0" max="100" placeholder="25"/>
+				</p>
+				<p class="btns">
+					<button id="save_disp" class="btn">Potvrdit</button>
+				</p>
+			</div>
 	    	<div class="form">
 		    	<h2>Váš Kegator &reg; nyní disponuje firmwarem <span id="fw_version">neznámým</span></h2>
 	    	</div>
@@ -172,6 +190,18 @@ document.addEventListener("DOMContentLoaded", function() {
 		};
     	save(geto);
   	});
+
+	// Uložit nastavení displeje
+	document.getElementById("save_disp").addEventListener("click", function() {
+		const geto = {};
+		const t = document.getElementById("disp_timeout").value;
+		const d = document.getElementById("disp_dim").value;
+		if (t !== "")
+			geto['disp_timeout'] = t;
+		if (d !== "")
+			geto['disp_dim'] = d;
+		save(geto);
+	});
 
 	// Odstranit MQTT
 	document.getElementById("rem_mqtt").addEventListener("click", function() {

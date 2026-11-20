@@ -52,6 +52,8 @@ class MockDevice:
         self.data = load_json('data_keg.json' if with_keg else 'data.json')
         self.data.setdefault('sw', 'dev_server (mock)')
         self.conf = load_json('conf.json')
+        self.conf.setdefault('disp_timeout', 15)    # fw20 settings.h defaults
+        self.conf.setdefault('disp_dim', 25)
         self.secrets = {}   # passwords: stored, never sent back
         try:
             text = (ROOT / 'keglist.txt').read_text(encoding='utf-8')
@@ -146,6 +148,21 @@ class MockDevice:
             else:
                 self.conf.pop('ssid', None)
             self.secrets['wpwd'] = f.get('wpwd', '')
+            return True
+
+        if 'disp_timeout' in f or 'disp_dim' in f:
+            limits = {'disp_timeout': 3600, 'disp_dim': 100}
+            new = {}
+            for key, top in limits.items():
+                if key in f:
+                    try:
+                        v = int(f[key])
+                    except ValueError:
+                        return False
+                    if not 0 <= v <= top:
+                        return False
+                    new[key] = v
+            self.conf.update(new)
             return True
 
         if any(k in f for k in ('mqtt_url', 'mqtt_topic', 'mqtt_user')):
