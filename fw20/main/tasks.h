@@ -1,7 +1,7 @@
 #pragma once
 
 /* Task stack sizes (bytes) and priorities */
-#define TASK_DISP_STACK     4096
+#define TASK_DISP_STACK     8192
 #define TASK_DISP_PRIO      4
 
 #define TASK_SCALE_STACK    4096

@@ -1,0 +1,4 @@
+dependencies:
+  idf: ">=5.5"
+  espressif/esp_lcd_sh8601: "^2"   # CO5300 is SH8601 command compatible
+  lvgl/lvgl: "~9.3"
