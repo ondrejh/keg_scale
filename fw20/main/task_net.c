@@ -11,6 +11,7 @@
 #include "config.h"
 #include "settings.h"
 #include "net.h"
+#include "http.h"
 #include "tasks.h"
 
 static const char *TAG = "net";
@@ -156,8 +157,10 @@ void task_net(void *arg)
     if (!connected)
         ap_start();
 
+    ESP_ERROR_CHECK(http_start());
+
     while (1) {
-        /* TODO: MQTT / HTTP server */
+        /* TODO: MQTT */
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
