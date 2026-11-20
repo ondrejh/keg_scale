@@ -41,11 +41,14 @@
 #define BOARD_PA_EN             GPIO_NUM_23  /* speaker amplifier enable */
 
 /* ---- Power / battery ---- */
-#define BOARD_SYS_POWER_HOLD    GPIO_NUM_2   /* drive high to keep board on */
+/* Verified against ESP32-C6-Touch-AMOLED-1.32-Schematic.pdf (BAT block, GPIO table) */
+#define BOARD_SYS_POWER_HOLD    GPIO_NUM_2   /* BAT_EN: high = keep battery->VSYS path on
+                                                (Q1 via T1); soft power latch, NOT charger enable */
 #define BOARD_BATT_ADC_UNIT     ADC_UNIT_1
-#define BOARD_BATT_ADC_CHANNEL  ADC_CHANNEL_0 /* GPIO0, via divider (?) */
-/* Vendor header lists ETA6098 charger STAT on GPIO21, which clashes with LCD_RST (?) */
+#define BOARD_BATT_ADC_CHANNEL  ADC_CHANNEL_0 /* GPIO0 BAT_ADC, divider 200K/100K -> Vbat = 3 * Vadc */
+/* Charger ETA6098: no MCU control (no enable, no I2C). Green LED1 is driven by its
+ * STAT pin from VSYS - hardware only, cannot be switched off in firmware. */
 
 /* ---- Buttons (active low, pull-up) ---- */
 #define BOARD_BTN_BOOT          GPIO_NUM_9
-#define BOARD_BTN_PWR           GPIO_NUM_1
+#define BOARD_BTN_PWR           GPIO_NUM_1   /* PWR_KEY; pressing also powers on via D2 */
