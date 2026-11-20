@@ -27,6 +27,8 @@ idf.py -p /dev/ttyACM0 flash monitor
 
 - `main/board.h` – board pin map (from Waveshare demos)
 - `partitions.csv` – nvs, 2x 4 MB OTA app slots, ~8 MB LittleFS `storage`
+- `tools/mkfont.py` – generates the big LVGL fonts in `main/fonts/` from LVGL's
+  Montserrat TTF (system python3 + Pillow, no node needed)
 - `tools/mkbg.py` – cuts the display gauge textures (`main/img/*`) out of
   `web20/img/bg.jpg`; rerun with system python3 (Pillow, numpy) after it changes
 - `../web20` – web UI; packed into the `storage` LittleFS image at build time and
