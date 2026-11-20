@@ -1,0 +1,4 @@
+.espressif/
+build/
+sdkconfig.old
+managed_components/

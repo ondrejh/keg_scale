@@ -1,0 +1,4 @@
+[submodule "fw20/esp-idf"]
+	path = fw20/esp-idf
+	url = https://github.com/espressif/esp-idf.git
+	shallow = true
