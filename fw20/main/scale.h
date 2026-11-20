@@ -47,3 +47,18 @@ void scale_update(int32_t raw, bool temp_valid, float temp);
 
 /* Copy current state. */
 void scale_get(scale_data_t *out);
+
+/* Inverse of scale_interpolate: raw reading for a weight (extrapolates). */
+int32_t scale_units_to_raw(const scale_calib_t *c, float units);
+
+/* Tap a keg: full at the current reading, `volume` in secondary units. */
+void scale_keg_tap(const char *name, float volume);
+void scale_keg_untap(void);
+
+/* Keg fullness 0..100 %, 0 when no keg is tapped. */
+int scale_keg_pct(const scale_data_t *d);
+
+/* SIMULATION (task_scale.c) - remove together with the fake readings once the
+ * HX711 driver exists. Full keg = tapped at 100 %, off = untapped, empty keg. */
+void scale_sim_keg_full(void);
+void scale_sim_keg_off(void);
