@@ -13,3 +13,8 @@
 
 /* Station */
 #define STA_CONNECT_TIMEOUT_MS  15000
+
+/* Display: fade to BRIGHT_DIM after IDLE_DIM_MS without touch (0..255, 0 = black) */
+#define BRIGHT_ON               255
+#define BRIGHT_DIM              64
+#define IDLE_DIM_MS             15000

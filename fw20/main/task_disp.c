@@ -56,8 +56,58 @@ static void show_screen(void)
     refresh_values();
 }
 
+/* ---- idle dimming: fade down after IDLE_DIM_MS without touch ---- */
+/* IDLE_DIM_MS, BRIGHT_ON, BRIGHT_DIM: settings.h */
+#define FADE_OUT_MS     1500
+#define FADE_IN_MS      200
+#define WAKE_IGNORE_MS  500     /* the waking touch must not swipe/tap too */
+
+static int32_t s_bright = BRIGHT_ON;
+static bool s_dimmed;
+static uint32_t s_wake_ms;
+
+static void bright_anim_cb(void *var, int32_t v)
+{
+    if (v != s_bright) {
+        s_bright = v;
+        display_set_brightness((uint8_t)v);
+    }
+}
+
+static void fade_to(int32_t level, uint32_t ms)
+{
+    lv_anim_delete(&s_bright, bright_anim_cb);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, &s_bright);
+    lv_anim_set_exec_cb(&a, bright_anim_cb);
+    lv_anim_set_values(&a, s_bright, level);
+    lv_anim_set_duration(&a, ms);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+}
+
+static void idle_check(void)
+{
+    uint32_t idle = lv_display_get_inactive_time(NULL);
+    if (!s_dimmed && idle >= IDLE_DIM_MS) {
+        s_dimmed = true;
+        fade_to(BRIGHT_DIM, FADE_OUT_MS);
+    } else if (s_dimmed && idle < IDLE_DIM_MS) {
+        s_dimmed = false;
+        s_wake_ms = lv_tick_get();
+        fade_to(BRIGHT_ON, FADE_IN_MS);
+    }
+}
+
 static void on_input(ui_input_t ev)
 {
+    /* the touch that wakes the display only wakes it (gesture events can
+     * arrive before idle_check() notices the touch, hence s_dimmed too) */
+    if (s_dimmed || lv_tick_elaps(s_wake_ms) < WAKE_IGNORE_MS) {
+        ESP_LOGI(TAG, "%s (wake, ignored)", ui_input_name(ev));
+        return;
+    }
     ESP_LOGI(TAG, "%s", ui_input_name(ev));
     switch (ev) {
     case UI_SWIPE_LEFT:
@@ -105,6 +155,7 @@ void task_disp(void *arg)
         }
 
         uint32_t ms = lv_timer_handler();
+        idle_check();
         if (ms < 5)
             ms = 5;
         else if (ms > 100)
