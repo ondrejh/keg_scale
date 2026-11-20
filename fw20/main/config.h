@@ -2,7 +2,10 @@
 
 #include "esp_err.h"
 
-#define CONFIG_SLOT_NET     0
+/* flash_data slots in the "config" partition (4 KB each) */
+#define CONFIG_SLOT_NET     0       /* net_config_t (config.c) */
+#define CONFIG_SLOT_KEG     1       /* scale_keg_t (scale.c) */
+
 #define NET_CONFIG_VERSION  1
 
 typedef struct {

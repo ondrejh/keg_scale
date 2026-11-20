@@ -2,7 +2,14 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "esp_log.h"
+#include "config.h"
+#include "flash_data.h"
 #include "scale.h"
+
+static const char *TAG = "scale";
+
+#define KEG_VERSION     1       /* bump when scale_keg_t changes */
 
 static scale_data_t s_data;
 static SemaphoreHandle_t s_lock;
@@ -36,7 +43,26 @@ void scale_init(void)
     s_lock = xSemaphoreCreateMutexStatic(&s_lock_buf);
     memset(&s_data, 0, sizeof(s_data));
     calib_default(&s_data.calib);
-    /* TODO: load calibration and keg from flash */
+    /* TODO: load calibration from flash */
+
+    scale_keg_t keg;
+    esp_err_t err = flash_data_load(CONFIG_SLOT_KEG, KEG_VERSION, &keg, sizeof(keg));
+    if (err == ESP_OK) {
+        keg.name[sizeof(keg.name) - 1] = '\0';
+        s_data.keg = keg;
+        if (keg.tapped)
+            ESP_LOGI(TAG, "keg \"%s\" (%.1f) restored", keg.name, keg.volume);
+    } else if (err != ESP_ERR_NOT_FOUND) {
+        ESP_LOGW(TAG, "keg load failed (%s)", esp_err_to_name(err));
+    }
+}
+
+/* Persist keg state (call without the lock held; flash erase is slow). */
+static void keg_save(const scale_keg_t *keg)
+{
+    esp_err_t err = flash_data_save(CONFIG_SLOT_KEG, KEG_VERSION, keg, sizeof(*keg));
+    if (err != ESP_OK)
+        ESP_LOGE(TAG, "keg save failed (%s)", esp_err_to_name(err));
 }
 
 /* Piecewise linear, extrapolates past the end points (as the sketch did). */
@@ -108,7 +134,9 @@ void scale_keg_tap(const char *name, float volume)
     k->fullraw = s_data.raw;
     k->tapped = true;
     s_data.keg_left = volume;
+    scale_keg_t copy = *k;
     xSemaphoreGive(s_lock);
+    keg_save(&copy);
 }
 
 void scale_keg_untap(void)
@@ -116,7 +144,9 @@ void scale_keg_untap(void)
     xSemaphoreTake(s_lock, portMAX_DELAY);
     s_data.keg.tapped = false;
     s_data.keg_left = 0.0f;
+    scale_keg_t copy = s_data.keg;
     xSemaphoreGive(s_lock);
+    keg_save(&copy);
 }
 
 int scale_keg_pct(const scale_data_t *d)

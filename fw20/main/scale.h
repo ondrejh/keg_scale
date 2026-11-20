@@ -51,7 +51,8 @@ void scale_get(scale_data_t *out);
 /* Inverse of scale_interpolate: raw reading for a weight (extrapolates). */
 int32_t scale_units_to_raw(const scale_calib_t *c, float units);
 
-/* Tap a keg: full at the current reading, `volume` in secondary units. */
+/* Tap a keg: full at the current reading, `volume` in secondary units.
+ * Tap/untap state is saved to flash and restored by scale_init(). */
 void scale_keg_tap(const char *name, float volume);
 void scale_keg_untap(void);
 

@@ -10,13 +10,13 @@
 #include "esp_netif.h"
 #include "config.h"
 #include "form.h"
+#include "keglist.h"
 #include "net.h"
 #include "scale.h"
 #include "http.h"
 
 static const char *TAG = "http";
 
-#define WWW_BASE        "/www"
 #define WWW_PARTITION   "storage"
 #define CHUNK_SIZE      1024
 
@@ -170,7 +170,7 @@ static bool do_keg_tap(const char *ctype)
     scale_sim_keg_load(volume);     /* SIMULATION: no real keg to put on */
     scale_keg_tap(name, volume);
     ESP_LOGI(TAG, "keg: tapped \"%s\", %.1f", name, volume);
-    /* TODO: persist keg state, add name to keglist.txt */
+    keglist_add(name);              /* autocomplete list; failure is not fatal */
     return true;
 }
 

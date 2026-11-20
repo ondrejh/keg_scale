@@ -80,6 +80,18 @@ void scale_sim_keg_off(void)
     ESP_LOGI(TAG, "sim: keg untapped");
 }
 
+/* After a reboot a tapped keg comes back from flash: put it on the scale as
+ * it was when tapped (full), otherwise the empty-keg weight would read as
+ * "all drunk". */
+static void sim_init(void)
+{
+    scale_data_t d;
+    scale_get(&d);
+    if (d.keg.tapped)
+        s_sim_kg = scale_interpolate(&d.calib, d.keg.fullraw);
+    scale_update(sim_raw(), false, 0.0f);
+}
+
 static void sim_step(void)
 {
     static int tick;
@@ -97,6 +109,7 @@ static void sim_step(void)
 void task_scale(void *arg)
 {
     print_info();
+    sim_init();         /* SIMULATION */
 
     while (1) {
         sim_step();     /* TODO: HX711 reading instead */
