@@ -91,7 +91,8 @@ void scale_update(int32_t raw, bool temp_valid, float temp)
     s_data.temp = temp;
     if (s_data.keg.tapped && s_data.calib.ratio > 0.0f) {
         float full = scale_interpolate(&s_data.calib, s_data.keg.fullraw);
-        s_data.keg_left = s_data.keg.volume - (full - s_data.units) / s_data.calib.ratio;
+        float left = s_data.keg.volume - (full - s_data.units) / s_data.calib.ratio;
+        s_data.keg_left = left > 0.0f ? left : 0.0f;   /* noise near empty, no "-0.0" */
     }
     xSemaphoreGive(s_lock);
 }

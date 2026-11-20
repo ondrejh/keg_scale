@@ -18,13 +18,25 @@ static int s_screen = SCR_MAIN;
 
 #define REFRESH_MS  500
 
+/* Gauge level while a keg is tapped: keg 0..100 % maps to GAUGE_TAPPED_MIN..100,
+ * so some beer stays visible below the keg panel until the keg is untapped
+ * (20 % = clear band at the bottom of the round screen). No keg = foam only. */
+#define GAUGE_TAPPED_MIN    20
+
+static int gauge_level(const scale_data_t *d)
+{
+    if (!d->keg.tapped)
+        return 0;
+    return GAUGE_TAPPED_MIN + scale_keg_pct(d) * (100 - GAUGE_TAPPED_MIN) / 100;
+}
+
 /* Push current scale data into the visible screen. */
 static void refresh_values(void)
 {
     scale_data_t d;
     scale_get(&d);
     ui_keg_update(&d);
-    ui_set_level(scale_keg_pct(&d));
+    ui_set_level(gauge_level(&d));
 }
 
 static void show_screen(void)
