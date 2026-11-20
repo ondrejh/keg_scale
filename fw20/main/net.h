@@ -15,3 +15,6 @@ net_mode_t net_get_mode(void);
 
 /* Current IP as text (STA lease or AP address). False if no network yet. */
 bool net_get_ip(char *buf, size_t len);
+
+/* Reboot in ~1.5 s to apply a changed network config (idempotent). */
+void net_restart_later(void);

@@ -7,6 +7,8 @@
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "esp_event.h"
+#include "esp_system.h"
+#include "esp_timer.h"
 #include "lwip/ip4_addr.h"
 #include "config.h"
 #include "settings.h"
@@ -17,6 +19,7 @@
 static const char *TAG = "net";
 
 #define CONNECTED_BIT BIT0
+#define RESTART_DELAY_MS 1500   /* let the HTTP reply reach the browser */
 
 char g_dev_id[16];
 static volatile net_mode_t s_mode = NET_MODE_NONE;
@@ -55,6 +58,25 @@ bool net_get_ip(char *buf, size_t len)
     default:
         return false;
     }
+}
+
+static void restart_cb(void *arg)
+{
+    esp_restart();
+}
+
+void net_restart_later(void)
+{
+    static esp_timer_handle_t timer;
+    if (timer)
+        return;     /* already pending */
+    const esp_timer_create_args_t args = { .callback = restart_cb, .name = "restart" };
+    if (esp_timer_create(&args, &timer) != ESP_OK) {
+        esp_restart();
+        return;
+    }
+    ESP_LOGI(TAG, "network config changed, restarting in %d ms", RESTART_DELAY_MS);
+    esp_timer_start_once(timer, RESTART_DELAY_MS * 1000ULL);
 }
 
 /* ---------------- STA ---------------- */

@@ -7,6 +7,8 @@
 #include "esp_littlefs.h"
 #include "esp_app_desc.h"
 #include "esp_netif.h"
+#include "config.h"
+#include "form.h"
 #include "net.h"
 #include "scale.h"
 #include "http.h"
@@ -71,21 +73,91 @@ static esp_err_t root_get(httpd_req_t *req)
     return httpd_resp_send(req, NULL, 0);
 }
 
-/* Stub for the web20 action endpoint: swallow the form, answer OK. */
-static esp_err_t do_post(httpd_req_t *req)
+/* ---------------- POST /do.php (web20 actions) ---------------- */
+
+#define FORM_MAX    2048
+
+static char s_form[FORM_MAX + 1];   /* httpd handlers run in one task */
+
+/* Read the whole body into s_form (NUL-terminated). */
+static esp_err_t recv_body(httpd_req_t *req)
 {
-    size_t left = req->content_len;
-    while (left > 0) {
-        int n = httpd_req_recv(req, s_chunk, left < CHUNK_SIZE ? left : CHUNK_SIZE);
+    size_t len = req->content_len, got = 0;
+    if (len > FORM_MAX) {
+        httpd_resp_send_err(req, HTTPD_413_CONTENT_TOO_LARGE, "too large");
+        return ESP_FAIL;    /* httpd closes the socket, no need to drain */
+    }
+    while (got < len) {
+        int n = httpd_req_recv(req, s_form + got, len - got);
         if (n == HTTPD_SOCK_ERR_TIMEOUT)
             continue;
         if (n <= 0)
             return ESP_FAIL;
-        left -= n;
+        got += n;
     }
-    ESP_LOGI(TAG, "do.php (%u bytes, ignored)", (unsigned)req->content_len);
+    s_form[got] = '\0';
+    return ESP_OK;
+}
+
+/* wssid (+ wpwd): store Wi-Fi credentials, reboot to apply. Empty wssid = AP mode. */
+static bool do_wifi(const char *ctype)
+{
+    char ssid[sizeof(g_net_config.ssid)], pwd[sizeof(g_net_config.password)];
+    if (!form_get(s_form, ctype, "wssid", ssid, sizeof(ssid)))
+        return false;
+    if (!form_get(s_form, ctype, "wpwd", pwd, sizeof(pwd)))
+        pwd[0] = '\0';
+
+    net_config_t nc = { 0 };
+    if (ssid[0]) {
+        size_t plen = strlen(pwd);
+        if (plen == 0 && strcmp(ssid, g_net_config.ssid) == 0) {
+            strcpy(pwd, g_net_config.password);     /* "******" = keep */
+            plen = strlen(pwd);
+        }
+        if (plen != 0 && plen < 8) {
+            ESP_LOGW(TAG, "wifi: password too short");
+            return false;
+        }
+        strcpy(nc.ssid, ssid);
+        strcpy(nc.password, pwd);
+    }
+
+    if (memcmp(&nc, &g_net_config, sizeof(nc)) == 0) {
+        ESP_LOGI(TAG, "wifi: unchanged");
+        return true;
+    }
+    g_net_config = nc;
+    esp_err_t err = config_save();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "wifi: save failed (%s)", esp_err_to_name(err));
+        return false;
+    }
+    ESP_LOGI(TAG, "wifi: ssid \"%s\" saved", nc.ssid);
+    net_restart_later();
+    return true;
+}
+
+static esp_err_t do_post(httpd_req_t *req)
+{
+    if (recv_body(req) != ESP_OK)
+        return ESP_FAIL;
+
+    char ctype[128] = "";
+    httpd_req_get_hdr_value_str(req, "Content-Type", ctype, sizeof(ctype));
+
+    bool ok;
+    if (form_has(s_form, ctype, "wssid")) {
+        ok = do_wifi(ctype);
+    } else {
+        /* TODO: keg, calibration, MQTT */
+        ESP_LOGW(TAG, "do.php: unsupported request");
+        ok = false;
+    }
+
     httpd_resp_set_type(req, "text/html");
-    return httpd_resp_sendstr(req, "OK");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, ok ? "OK" : "ERROR");
 }
 
 /* Append printf-formatted text; on overflow pos runs past len and stays there. */
@@ -171,6 +243,26 @@ static esp_err_t data_get(httpd_req_t *req)
     return httpd_resp_send(req, buf, p);
 }
 
+/* Configuration for config.html (never includes passwords). */
+static esp_err_t conf_get(httpd_req_t *req)
+{
+    char buf[256];
+    size_t p = 0;
+    jcat(buf, sizeof(buf), &p, "{");
+    if (g_net_config.ssid[0]) {
+        jcat(buf, sizeof(buf), &p, "\"ssid\":");
+        jstr(buf, sizeof(buf), &p, g_net_config.ssid);
+    }
+    /* TODO: mqtt_url, mqtt_topic, mqtt_user */
+    jcat(buf, sizeof(buf), &p, "}");
+    if (p >= sizeof(buf))
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "overflow");
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, buf, p);
+}
+
 static esp_err_t file_get(httpd_req_t *req)
 {
     char path[sizeof(WWW_BASE) + CONFIG_HTTPD_MAX_URI_LEN];
@@ -210,6 +302,7 @@ static esp_err_t file_get(httpd_req_t *req)
 static const httpd_uri_t s_uris[] = {
     { .uri = "/",       .method = HTTP_GET,  .handler = root_get },
     { .uri = "/data.json", .method = HTTP_GET, .handler = data_get },
+    { .uri = "/conf.json", .method = HTTP_GET, .handler = conf_get },
     { .uri = "/do.php", .method = HTTP_POST, .handler = do_post  },
     { .uri = "/*",      .method = HTTP_GET,  .handler = file_get },
 };

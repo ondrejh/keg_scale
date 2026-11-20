@@ -1,5 +1,5 @@
 idf_component_register(SRCS "main.c" "task_disp.c" "task_scale.c" "task_net.c"
-                            "flash_data.c" "config.c" "display.c" "ui.c" "ui_gauge.c" "ui_input.c" "touch.c" "http.c" "scale.c"
+                            "flash_data.c" "config.c" "display.c" "ui.c" "ui_gauge.c" "ui_input.c" "touch.c" "form.c" "http.c" "scale.c"
                        INCLUDE_DIRS "."
                        EMBED_FILES "img/foam.rgb565" "img/beer.rgb565" "img/edge.rgb565a8")
 
@@ -8,7 +8,7 @@ idf_component_register(SRCS "main.c" "task_disp.c" "task_scale.c" "task_net.c"
 set(WEB_SRC ${CMAKE_CURRENT_LIST_DIR}/../../web20)
 set(WEB_DIR ${CMAKE_BINARY_DIR}/www)
 file(GLOB WEB_FILES ${WEB_SRC}/*.html ${WEB_SRC}/*.css ${WEB_SRC}/*.ico
-                    ${WEB_SRC}/keglist.txt ${WEB_SRC}/conf.json)
+                    ${WEB_SRC}/keglist.txt)
 add_custom_target(www_stage
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${WEB_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${WEB_DIR}
