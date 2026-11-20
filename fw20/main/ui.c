@@ -10,13 +10,19 @@ static const char *TAG = "ui";
 #define QR_SIZE     240
 #define QR_BORDER   12
 
+#define PANEL_BG        0xF0F0F0    /* white-gray */
+#define PANEL_BORDER    0x909090
+#define PANEL_TEXT      0x202020
+
 static lv_obj_t *s_gauge;
+static lv_obj_t *s_weight;          /* keg screen weight label, NULL elsewhere */
 
 /* Clean screen with the beer gauge as background (level 100 %). */
 static lv_obj_t *new_screen(void)
 {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_clean(scr);
+    s_weight = NULL;
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);    /* scrolling would block swipes */
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
     s_gauge = ui_gauge_create(scr);
@@ -52,10 +58,50 @@ static size_t wifi_qr_escape(char *dst, size_t n, const char *src)
     return i;
 }
 
-void ui_show_hello(void)
+/* Rounded, bordered white-gray box; children stacked and centred. */
+static lv_obj_t *new_panel(lv_obj_t *parent)
+{
+    lv_obj_t *p = lv_obj_create(parent);
+    lv_obj_remove_flag(p, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(p, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(p, lv_color_hex(PANEL_BG), 0);
+    lv_obj_set_style_bg_opa(p, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(p, lv_color_hex(PANEL_BORDER), 0);
+    lv_obj_set_style_border_width(p, 3, 0);
+    lv_obj_set_style_radius(p, 24, 0);
+    lv_obj_set_style_pad_hor(p, 28, 0);
+    lv_obj_set_style_pad_ver(p, 12, 0);
+    lv_obj_set_style_pad_row(p, 0, 0);
+    lv_obj_set_flex_flow(p, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(p, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    return p;
+}
+
+void ui_show_keg(void)
 {
     lv_obj_t *scr = new_screen();
-    lv_obj_center(new_label(scr, "Hello world", &lv_font_montserrat_32));
+    lv_obj_t *panel = new_panel(scr);
+    lv_obj_center(panel);
+
+    /* no keg tapped: current weight, big, unit below */
+    s_weight = new_label(panel, "---", &lv_font_montserrat_48);
+    lv_obj_set_style_text_color(s_weight, lv_color_hex(PANEL_TEXT), 0);
+
+    lv_obj_t *unit = new_label(panel, "kg", &lv_font_montserrat_24);
+    lv_obj_set_style_text_color(unit, lv_color_hex(PANEL_TEXT), 0);
+}
+
+void ui_keg_update(float units, const char *unit)
+{
+    if (!s_weight)
+        return;
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.1f", units);
+    if (strcmp(lv_label_get_text(s_weight), buf) != 0)
+        lv_label_set_text(s_weight, buf);
+    lv_obj_t *l_unit = lv_obj_get_sibling(s_weight, 1);
+    if (l_unit && unit && strcmp(lv_label_get_text(l_unit), unit) != 0)
+        lv_label_set_text(l_unit, unit);
 }
 
 /* New screen with a centred QR code (white quiet zone) and two labels below. */

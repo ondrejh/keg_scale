@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "ui.h"
 #include "ui_input.h"
+#include "scale.h"
 #include "tasks.h"
 
 static const char *TAG = "disp";
@@ -55,6 +56,16 @@ static void demo_level_to(int32_t target)
 }
 /* ============================ end DEMO ============================== */
 
+#define REFRESH_MS  500
+
+/* Push current scale data into the visible screen. */
+static void refresh_values(void)
+{
+    scale_data_t d;
+    scale_get(&d);
+    ui_keg_update(d.units, d.calib.uprim);
+}
+
 static void show_screen(void)
 {
     char ip[16];
@@ -63,13 +74,14 @@ static void show_screen(void)
         if (net_get_mode() == NET_MODE_AP)
             ui_show_ap(g_dev_id, AP_PASSWORD, AP_IP);
         else
-            ui_show_hello();
+            ui_show_keg();
         break;
     case SCR_WEBI:
         ui_show_webi(net_get_ip(ip, sizeof(ip)) ? ip : NULL);
         break;
     }
     ui_set_level(s_demo_pct);   /* DEMO */
+    refresh_values();
 }
 
 static void on_input(ui_input_t ev)
@@ -104,12 +116,18 @@ void task_disp(void *arg)
     ESP_LOGI(TAG, "started");
 
     net_mode_t shown = NET_MODE_NONE;
+    TickType_t last_refresh = xTaskGetTickCount();
 
     while (1) {
         net_mode_t mode = net_get_mode();
         if (mode != shown) {
             shown = mode;
             show_screen();      /* AP QR / web URL depend on network state */
+        }
+
+        if (xTaskGetTickCount() - last_refresh >= pdMS_TO_TICKS(REFRESH_MS)) {
+            last_refresh = xTaskGetTickCount();
+            refresh_values();
         }
 
         uint32_t ms = lv_timer_handler();
