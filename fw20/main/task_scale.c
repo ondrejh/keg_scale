@@ -5,6 +5,8 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_app_desc.h"
+#include "esp_random.h"
+#include "scale.h"
 #include "tasks.h"
 
 static const char *TAG = "scale";
@@ -27,9 +29,11 @@ void task_scale(void *arg)
 {
     print_info();
 
-    uint32_t n = 0;
     while (1) {
-        ESP_LOGI(TAG, "heartbeat %lu", (unsigned long)n++);
+        /* TODO: HX711. Fake reading around 20 kg with some noise. */
+        int32_t raw = -14830000 + (int32_t)(esp_random() % 601) - 300;
+        scale_update(raw, false, 0.0f);
+        ESP_LOGD(TAG, "raw %ld", (long)raw);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

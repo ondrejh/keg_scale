@@ -5,6 +5,7 @@
 #include "board.h"
 #include "config.h"
 #include "tasks.h"
+#include "scale.h"
 
 static const char *TAG = "config";
 
@@ -34,6 +35,8 @@ void app_main(void)
         ESP_LOGI(TAG, "ssid \"%s\"", g_net_config.ssid);
     else
         ESP_LOGE(TAG, "load failed (%s)", esp_err_to_name(err));
+
+    scale_init();
 
     BaseType_t ok;
     ok = xTaskCreate(task_disp,  "task_disp",  TASK_DISP_STACK,  NULL, TASK_DISP_PRIO,  NULL);

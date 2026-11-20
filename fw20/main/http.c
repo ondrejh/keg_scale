@@ -1,9 +1,14 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_littlefs.h"
+#include "esp_app_desc.h"
+#include "esp_netif.h"
+#include "net.h"
+#include "scale.h"
 #include "http.h"
 
 static const char *TAG = "http";
@@ -83,6 +88,89 @@ static esp_err_t do_post(httpd_req_t *req)
     return httpd_resp_sendstr(req, "OK");
 }
 
+/* Append printf-formatted text; on overflow pos runs past len and stays there. */
+static void jcat(char *buf, size_t len, size_t *pos, const char *fmt, ...)
+    __attribute__((format(printf, 4, 5)));
+static void jcat(char *buf, size_t len, size_t *pos, const char *fmt, ...)
+{
+    if (*pos >= len)
+        return;
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf + *pos, len - *pos, fmt, ap);
+    va_end(ap);
+    *pos += n > 0 ? (size_t)n : 0;
+}
+
+/* Append a quoted JSON string, escaping quotes, backslashes and control chars. */
+static void jstr(char *buf, size_t len, size_t *pos, const char *s)
+{
+    jcat(buf, len, pos, "\"");
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (c == '"' || c == '\\')
+            jcat(buf, len, pos, "\\%c", c);
+        else if (c < 0x20)
+            jcat(buf, len, pos, "\\u%04x", c);
+        else
+            jcat(buf, len, pos, "%c", c);
+    }
+    jcat(buf, len, pos, "\"");
+}
+
+/* Live scale data, same layout as the original sketch (build_data). */
+static esp_err_t data_get(httpd_req_t *req)
+{
+    scale_data_t d;
+    scale_get(&d);
+
+    char buf[1024];
+    size_t p = 0;
+    const size_t n = sizeof(buf);
+
+    jcat(buf, n, &p, "{\"devid\":");
+    jstr(buf, n, &p, g_dev_id);
+    jcat(buf, n, &p, ",\"sw\":");
+    jstr(buf, n, &p, esp_app_get_description()->version);
+    jcat(buf, n, &p, ",\"raw\":%ld,\"units\":%.1f", (long)d.raw, d.units);
+
+    if (net_get_mode() == NET_MODE_STA) {
+        esp_netif_ip_info_t ip;
+        esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        if (netif && esp_netif_get_ip_info(netif, &ip) == ESP_OK)
+            jcat(buf, n, &p, ",\"ip\":\"" IPSTR "\"", IP2STR(&ip.ip));
+    }
+
+    if (d.temp_valid)
+        jcat(buf, n, &p, ",\"temp\":%.1f", d.temp);
+
+    jcat(buf, n, &p, ",\"primary_unit\":");
+    jstr(buf, n, &p, d.calib.uprim);
+    jcat(buf, n, &p, ",\"secondary_unit\":");
+    jstr(buf, n, &p, d.calib.usec);
+
+    jcat(buf, n, &p, ",\"calib\":{");
+    for (int i = 0; i < d.calib.n; i++)
+        jcat(buf, n, &p, "%s\"%.2f\":%ld", i ? "," : "", d.calib.y[i], (long)d.calib.x[i]);
+    jcat(buf, n, &p, "}");
+
+    if (d.keg.tapped) {
+        jcat(buf, n, &p, ",\"keg\":{\"name\":");
+        jstr(buf, n, &p, d.keg.name);
+        jcat(buf, n, &p, ",\"volume\":%.1f,\"left\":%.1f}", d.keg.volume, d.keg_left);
+    }
+    jcat(buf, n, &p, "}");
+
+    if (p >= n) {
+        ESP_LOGE(TAG, "data.json overflow (%u)", (unsigned)p);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "overflow");
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, buf, p);
+}
+
 static esp_err_t file_get(httpd_req_t *req)
 {
     char path[sizeof(WWW_BASE) + CONFIG_HTTPD_MAX_URI_LEN];
@@ -121,6 +209,7 @@ static esp_err_t file_get(httpd_req_t *req)
 
 static const httpd_uri_t s_uris[] = {
     { .uri = "/",       .method = HTTP_GET,  .handler = root_get },
+    { .uri = "/data.json", .method = HTTP_GET, .handler = data_get },
     { .uri = "/do.php", .method = HTTP_POST, .handler = do_post  },
     { .uri = "/*",      .method = HTTP_GET,  .handler = file_get },
 };
@@ -135,6 +224,7 @@ esp_err_t http_start(void)
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.lru_purge_enable = true;
     cfg.uri_match_fn = httpd_uri_match_wildcard;
+    cfg.stack_size = 6144;          /* data.json builds a 1 KB buffer + printf floats */
 
     esp_err_t err = httpd_start(&s_server, &cfg);
     if (err != ESP_OK) {
