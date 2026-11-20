@@ -59,10 +59,15 @@ static float sim_beer_kg(void)
     return d.calib.ratio;
 }
 
+void scale_sim_keg_load(float volume)
+{
+    s_sim_kg = SIM_EMPTY_KG + volume * sim_beer_kg();
+    scale_update(sim_raw(), false, 0.0f);       /* tap after this: fullraw = full */
+}
+
 void scale_sim_keg_full(void)
 {
-    s_sim_kg = SIM_EMPTY_KG + SIM_KEG_VOLUME * sim_beer_kg();
-    scale_update(sim_raw(), false, 0.0f);       /* fullraw = this reading */
+    scale_sim_keg_load(SIM_KEG_VOLUME);
     scale_keg_tap(SIM_KEG_NAME, SIM_KEG_VOLUME);
     ESP_LOGI(TAG, "sim: full keg tapped (%.1f kg)", s_sim_kg);
 }

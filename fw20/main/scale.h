@@ -62,3 +62,5 @@ int scale_keg_pct(const scale_data_t *d);
  * HX711 driver exists. Full keg = tapped at 100 %, off = untapped, empty keg. */
 void scale_sim_keg_full(void);
 void scale_sim_keg_off(void);
+/* Put a full keg of `volume` beers on the (simulated) scale, not tapped yet. */
+void scale_sim_keg_load(float volume);

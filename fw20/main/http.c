@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -138,6 +139,52 @@ static bool do_wifi(const char *ctype)
     return true;
 }
 
+/* Cut a UTF-8 string to at most max bytes without splitting a character. */
+static void utf8_truncate(char *s, size_t max)
+{
+    size_t n = strlen(s);
+    if (n <= max)
+        return;
+    n = max;
+    while (n > 0 && ((unsigned char)s[n] & 0xC0) == 0x80)
+        n--;            /* s[n] is a continuation byte: back to the lead byte */
+    s[n] = '\0';
+}
+
+/* keg + vol: tap a new keg, full at the current reading. */
+static bool do_keg_tap(const char *ctype)
+{
+    char name[128], vol[16];
+    if (!form_get(s_form, ctype, "keg", name, sizeof(name)) ||
+        !form_get(s_form, ctype, "vol", vol, sizeof(vol)))
+        return false;
+
+    char *end;
+    float volume = strtof(vol, &end);
+    if (end == vol || *end != '\0' || !(volume > 0.0f) || volume > 1000.0f) {
+        ESP_LOGW(TAG, "keg: bad volume \"%s\"", vol);
+        return false;
+    }
+    utf8_truncate(name, KEG_NAME_MAX);
+
+    scale_sim_keg_load(volume);     /* SIMULATION: no real keg to put on */
+    scale_keg_tap(name, volume);
+    ESP_LOGI(TAG, "keg: tapped \"%s\", %.1f", name, volume);
+    /* TODO: persist keg state, add name to keglist.txt */
+    return true;
+}
+
+/* del=yes: untap the keg (it stays on the scale). */
+static bool do_keg_untap(const char *ctype)
+{
+    char v[8];
+    if (!form_get(s_form, ctype, "del", v, sizeof(v)) || strcmp(v, "yes") != 0)
+        return false;
+    scale_keg_untap();
+    ESP_LOGI(TAG, "keg: untapped");
+    return true;
+}
+
 static esp_err_t do_post(httpd_req_t *req)
 {
     if (recv_body(req) != ESP_OK)
@@ -146,11 +193,16 @@ static esp_err_t do_post(httpd_req_t *req)
     char ctype[128] = "";
     httpd_req_get_hdr_value_str(req, "Content-Type", ctype, sizeof(ctype));
 
+    /* same dispatch order as the original sketch (http_handlers.ino) */
     bool ok;
-    if (form_has(s_form, ctype, "wssid")) {
+    if (form_has(s_form, ctype, "keg") && form_has(s_form, ctype, "vol")) {
+        ok = do_keg_tap(ctype);
+    } else if (form_has(s_form, ctype, "del")) {
+        ok = do_keg_untap(ctype);
+    } else if (form_has(s_form, ctype, "wssid")) {
         ok = do_wifi(ctype);
     } else {
-        /* TODO: keg, calibration, MQTT */
+        /* TODO: calibration, MQTT */
         ESP_LOGW(TAG, "do.php: unsupported request");
         ok = false;
     }
