@@ -44,11 +44,19 @@ static void print_info(void)
 
 static volatile float s_sim_kg = SIM_EMPTY_KG;
 
+/* The simulated load cell: true kg -> raw by the factory calibration, so a
+ * user calibration really changes the displayed weight, as with a real cell. */
+static const scale_calib_t *sim_sensor(void)
+{
+    static scale_calib_t model;
+    if (model.n == 0)
+        scale_calib_default(&model);
+    return &model;
+}
+
 static int32_t sim_raw(void)
 {
-    scale_data_t d;
-    scale_get(&d);
-    return scale_units_to_raw(&d.calib, s_sim_kg)
+    return scale_units_to_raw(sim_sensor(), s_sim_kg)
          + (int32_t)(esp_random() % (2 * SIM_NOISE + 1)) - SIM_NOISE;
 }
 
@@ -88,7 +96,7 @@ static void sim_init(void)
     scale_data_t d;
     scale_get(&d);
     if (d.keg.tapped)
-        s_sim_kg = scale_interpolate(&d.calib, d.keg.fullraw);
+        s_sim_kg = scale_interpolate(sim_sensor(), d.keg.fullraw);
     scale_update(sim_raw(), false, 0.0f);
 }
 

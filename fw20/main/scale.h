@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #define CALIB_MAX       5
+#define CALIB_MIN       2           /* can't delete below this */
 #define UNIT_STR_MAX    8
 #define KEG_NAME_MAX    32
 
@@ -41,6 +42,18 @@ typedef struct {
 void scale_init(void);
 
 float scale_interpolate(const scale_calib_t *c, int32_t raw);
+
+/* Factory calibration (also the simulated sensor model). */
+void scale_calib_default(scale_calib_t *c);
+
+/* Calibration point `units` at raw (NULL = current reading). An existing point
+ * with the same units is re-measured, otherwise a new one is added. False when
+ * the table is full. Saved to flash, restored by scale_init(). */
+bool scale_calib_set(float units, const int32_t *raw);
+
+/* Delete point at index (0-based, table order = data.json order). False if out
+ * of range or only CALIB_MIN points left. */
+bool scale_calib_delete(int index);
 
 /* Store new measurement and recompute derived values. */
 void scale_update(int32_t raw, bool temp_valid, float temp);

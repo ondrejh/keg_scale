@@ -10,6 +10,7 @@
 static const char *TAG = "scale";
 
 #define KEG_VERSION     1       /* bump when scale_keg_t changes */
+#define CALIB_VERSION   1       /* bump when scale_calib_t changes */
 
 static scale_data_t s_data;
 static SemaphoreHandle_t s_lock;
@@ -26,7 +27,7 @@ static void calib_sort(scale_calib_t *c)
 }
 
 /* Defaults from the original sketch (set_calib_default) */
-static void calib_default(scale_calib_t *c)
+void scale_calib_default(scale_calib_t *c)
 {
     memset(c, 0, sizeof(*c));
     c->n = 2;
@@ -42,8 +43,20 @@ void scale_init(void)
 {
     s_lock = xSemaphoreCreateMutexStatic(&s_lock_buf);
     memset(&s_data, 0, sizeof(s_data));
-    calib_default(&s_data.calib);
-    /* TODO: load calibration from flash */
+
+    scale_calib_t cal;
+    esp_err_t cerr = flash_data_load(CONFIG_SLOT_CALIB, CALIB_VERSION, &cal, sizeof(cal));
+    if (cerr == ESP_OK && cal.n >= 2 && cal.n <= CALIB_MAX) {
+        cal.uprim[sizeof(cal.uprim) - 1] = '\0';
+        cal.usec[sizeof(cal.usec) - 1] = '\0';
+        calib_sort(&cal);
+        s_data.calib = cal;
+        ESP_LOGI(TAG, "calibration restored (%d points)", cal.n);
+    } else {
+        if (cerr != ESP_ERR_NOT_FOUND)
+            ESP_LOGW(TAG, "calibration load failed (%s), defaults", esp_err_to_name(cerr));
+        scale_calib_default(&s_data.calib);
+    }
 
     scale_keg_t keg;
     esp_err_t err = flash_data_load(CONFIG_SLOT_KEG, KEG_VERSION, &keg, sizeof(keg));
@@ -55,6 +68,13 @@ void scale_init(void)
     } else if (err != ESP_ERR_NOT_FOUND) {
         ESP_LOGW(TAG, "keg load failed (%s)", esp_err_to_name(err));
     }
+}
+
+static void calib_save(const scale_calib_t *c)
+{
+    esp_err_t err = flash_data_save(CONFIG_SLOT_CALIB, CALIB_VERSION, c, sizeof(*c));
+    if (err != ESP_OK)
+        ESP_LOGE(TAG, "calibration save failed (%s)", esp_err_to_name(err));
 }
 
 /* Persist keg state (call without the lock held; flash erase is slow). */
@@ -82,19 +102,77 @@ float scale_interpolate(const scale_calib_t *c, int32_t raw)
     return y1 + (y2 - y1) * (float)(raw - x1) / (float)(x2 - x1);
 }
 
-void scale_update(int32_t raw, bool temp_valid, float temp)
+/* Derived values from raw + calibration + keg. Lock held. */
+static void recompute(void)
 {
-    xSemaphoreTake(s_lock, portMAX_DELAY);
-    s_data.raw = raw;
-    s_data.units = scale_interpolate(&s_data.calib, raw);
-    s_data.temp_valid = temp_valid;
-    s_data.temp = temp;
+    s_data.units = scale_interpolate(&s_data.calib, s_data.raw);
     if (s_data.keg.tapped && s_data.calib.ratio > 0.0f) {
         float full = scale_interpolate(&s_data.calib, s_data.keg.fullraw);
         float left = s_data.keg.volume - (full - s_data.units) / s_data.calib.ratio;
         s_data.keg_left = left > 0.0f ? left : 0.0f;   /* noise near empty, no "-0.0" */
     }
+}
+
+void scale_update(int32_t raw, bool temp_valid, float temp)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    s_data.raw = raw;
+    s_data.temp_valid = temp_valid;
+    s_data.temp = temp;
+    recompute();
     xSemaphoreGive(s_lock);
+}
+
+bool scale_calib_set(float units, const int32_t *raw)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    scale_calib_t *c = &s_data.calib;
+    int32_t x = raw ? *raw : s_data.raw;
+    int i;
+    for (i = 0; i < c->n; i++) {
+        if (c->y[i] == units)
+            break;          /* same value: re-measure that point */
+    }
+    if (i == c->n) {
+        if (c->n >= CALIB_MAX) {
+            xSemaphoreGive(s_lock);
+            return false;
+        }
+        c->n++;
+    }
+    c->x[i] = x;
+    c->y[i] = units;
+    calib_sort(c);
+    recompute();
+    scale_calib_t copy = *c;
+    xSemaphoreGive(s_lock);
+
+    calib_save(&copy);
+    ESP_LOGI(TAG, "calib: %.2f = %ld (%d points)", units, (long)x, copy.n);
+    return true;
+}
+
+bool scale_calib_delete(int index)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    scale_calib_t *c = &s_data.calib;
+    if (index < 0 || index >= c->n || c->n <= CALIB_MIN) {
+        xSemaphoreGive(s_lock);
+        return false;
+    }
+    float y = c->y[index];
+    for (int i = index; i < c->n - 1; i++) {
+        c->x[i] = c->x[i + 1];
+        c->y[i] = c->y[i + 1];
+    }
+    c->n--;
+    recompute();
+    scale_calib_t copy = *c;
+    xSemaphoreGive(s_lock);
+
+    calib_save(&copy);
+    ESP_LOGI(TAG, "calib: %.2f deleted (%d points)", y, copy.n);
+    return true;
 }
 
 void scale_get(scale_data_t *out)

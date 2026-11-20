@@ -1,4 +1,6 @@
 #include <stdarg.h>
+#include <errno.h>
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -185,6 +187,66 @@ static bool do_keg_untap(const char *ctype)
     return true;
 }
 
+/* Parse a whole-string number; accepts a decimal comma ("10,5"). */
+static bool parse_float(char *s, float *out)
+{
+    for (char *p = s; *p; p++)
+        if (*p == ',')
+            *p = '.';
+    char *end;
+    float v = strtof(s, &end);
+    if (end == s || *end != '\0' || !isfinite(v))
+        return false;
+    *out = v;
+    return true;
+}
+
+static bool parse_int(const char *s, long *out)
+{
+    char *end;
+    errno = 0;
+    long v = strtol(s, &end, 0);
+    if (end == s || *end != '\0' || errno)
+        return false;
+    *out = v;
+    return true;
+}
+
+/* addc=<units> [rawc=<raw>]: calibration point at the current reading
+ * (rawc restores a saved point). Same units again = re-measure that point. */
+static bool do_calib_add(const char *ctype)
+{
+    char sval[16], sraw[16];
+    float units;
+    if (!form_get(s_form, ctype, "addc", sval, sizeof(sval)) || !parse_float(sval, &units) ||
+        units < -1000.0f || units > 1000.0f) {
+        ESP_LOGW(TAG, "calib: bad value");
+        return false;
+    }
+    int32_t raw, *praw = NULL;
+    if (form_get(s_form, ctype, "rawc", sraw, sizeof(sraw)) && sraw[0]) {
+        long r;
+        if (!parse_int(sraw, &r) || r < INT32_MIN || r > INT32_MAX) {
+            ESP_LOGW(TAG, "calib: bad raw");
+            return false;
+        }
+        raw = (int32_t)r;
+        praw = &raw;
+    }
+    units = roundf(units * 100.0f) / 100.0f;    /* as shown in data.json ("%.2f") */
+    return scale_calib_set(units, praw);
+}
+
+/* delc=<n>: delete n-th calibration row (1-based, data.json order). */
+static bool do_calib_del(const char *ctype)
+{
+    char sval[8];
+    long n;
+    if (!form_get(s_form, ctype, "delc", sval, sizeof(sval)) || !parse_int(sval, &n))
+        return false;
+    return scale_calib_delete((int)n - 1);
+}
+
 static esp_err_t do_post(httpd_req_t *req)
 {
     if (recv_body(req) != ESP_OK)
@@ -199,10 +261,14 @@ static esp_err_t do_post(httpd_req_t *req)
         ok = do_keg_tap(ctype);
     } else if (form_has(s_form, ctype, "del")) {
         ok = do_keg_untap(ctype);
+    } else if (form_has(s_form, ctype, "addc")) {
+        ok = do_calib_add(ctype);
+    } else if (form_has(s_form, ctype, "delc")) {
+        ok = do_calib_del(ctype);
     } else if (form_has(s_form, ctype, "wssid")) {
         ok = do_wifi(ctype);
     } else {
-        /* TODO: calibration, MQTT */
+        /* TODO: MQTT */
         ESP_LOGW(TAG, "do.php: unsupported request");
         ok = false;
     }
