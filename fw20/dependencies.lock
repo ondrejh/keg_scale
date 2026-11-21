@@ -9,6 +9,17 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 0.5.3
+  espressif/ds18b20:
+    component_hash: 9792f38a20eb2fe7435cba349e3b4b7085381f05400233aacd849ced69e2207f
+    dependencies:
+    - name: espressif/onewire_bus
+      registry_url: https://components.espressif.com
+      require: private
+      version: ^1.0.0
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 0.2.0
   espressif/esp_lcd_sh8601:
     component_hash: 18245cd23204eefb67f61b362405f78364fa13b13cdedda5f7546d89701c506b
     dependencies:
@@ -23,6 +34,16 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 2.0.1~1
+  espressif/onewire_bus:
+    component_hash: dcce4fb1c2fc43c3d02de1cc9abdf062127468a785578723696de3817c526f99
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.1.2
   idf:
     source:
       type: idf
@@ -45,10 +66,12 @@ dependencies:
       type: service
     version: 9.3.0
 direct_dependencies:
+- espressif/ds18b20
 - espressif/esp_lcd_sh8601
+- espressif/onewire_bus
 - idf
 - joltwallet/littlefs
 - lvgl/lvgl
-manifest_hash: a6cc7466fb04fb2095493a0bf39b73b4764aa9f064c1eea68742ef680ab37f5e
+manifest_hash: 79a65e93f06a24e9a4865a84787a73e225a7556ffe1d2113746dfbd70ef2c3fe
 target: esp32c6
 version: 2.0.0

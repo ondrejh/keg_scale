@@ -169,7 +169,6 @@ static bool do_keg_tap(const char *ctype)
     }
     utf8_truncate(name, KEG_NAME_MAX);
 
-    scale_sim_keg_load(volume);     /* SIMULATION: no real keg to put on */
     scale_keg_tap(name, volume);
     ESP_LOGI(TAG, "keg: tapped \"%s\", %.1f", name, volume);
     keglist_add(name);              /* autocomplete list; failure is not fatal */

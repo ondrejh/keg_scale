@@ -45,7 +45,7 @@ Verify the numbering against the Waveshare schematic / silkscreen.
 | 1  | GND     | –        |                                                             |
 | 2  | VSYS    | –        | USB 5 V rail, unregulated                    |
 | 3  | CHIP_EN | EN       | reset – leave unconnected                                   |
-| 4  | GPIO9   | GPIO9    | strapping (must be high at boot) + BOOT button; free in FW  |
+| 4  | GPIO9   | GPIO9    | strapping (must be high at boot) + BOOT button, 100 nF to GND; free in FW |
 | 5  | GND     | –        |                                                             |
 | 6  | 3V3     | –        | regulated 3.3 V                                             |
 | 7  | SCL     | GPIO7    | I2C0, shared with touch CST820 (0x15) and ES8311            |
@@ -63,12 +63,15 @@ Assignment:
 | signal       | J1 | ESP32-C6 | why                                                          |
 |--------------|----|----------|--------------------------------------------------------------|
 | HX711 DOUT   | 12 | GPIO17   | input during boot → no contention with the HX711 output      |
-| HX711 PD_SCK | 11 | GPIO16   | ROM log at reset idles high → HX711 just powers down; firmware resets it at init (SCK high > 60 µs, then low). Optionally `CONFIG_BOOT_ROM_LOG_ALWAYS_OFF` |
-| DS18B20 DQ   | 4  | GPIO9    | 1-wire is open-drain, pull-up keeps the strap high (SPI boot); pressing BOOT just shorts the bus, harmless |
+| HX711 PD_SCK | 4  | GPIO9    | push-pull output; strap pull-up holds SCK high at boot → HX711 just powers down, firmware resets it at init |
+| DS18B20 DQ   | 11 | GPIO16   | open-drain 1-wire; ROM log toggling U0TXD at reset is harmless |
 
-Not the other way round: a push-pull HX711 SCK on GPIO9 would short to GND
-whenever BOOT is pressed, and the strap pull-up would hold the HX711 in
-power-down at boot.
+GPIO9 (BOOT) has a **100 nF capacitor** to GND on the board. With the 4.7 kΩ
+1-wire pull-up that is RC ≈ 470 µs, while 1-wire samples each bit ~15 µs after
+the edge – 1-wire cannot work on GPIO9. A push-pull output can drive it (edges
+of ~10 µs); `hx711.c` reads the SCK pin back and waits for each edge, keeping
+every high phase < 50 µs. Don't press BOOT while running – it shorts the SCK
+output to GND.
 
 Long sensor cables: ~100 Ω series resistors on DQ/SCK/DOUT near J1 (+ ESD diode).
 
@@ -81,14 +84,14 @@ HX711 notes:
   returns all zeros – firmware should treat a constant 0 as "sensor missing".
 - The divider needs a **stable 5 V**: ESP VIH ≈ 0.75 × 3.3 V = 2.5 V → the
   HX711 supply must stay above ~3.7 V.
-- **SCK (GPIO16 → HX711) is not shifted**: HX711 VIH = 0.7 × VDD = 3.5 V at 5 V,
+- **SCK (GPIO9 → HX711) is not shifted**: HX711 VIH = 0.7 × VDD = 3.5 V at 5 V,
   a 3.3 V output is below spec. Often works in practice, but marginal – if
   readings glitch, add a 5 V buffer with TTL inputs (74HCT1G125 / 74AHCT1G125)
   or a BSS138 stage on SCK.
 - Keep RATE low (10 SPS, default on most modules) – less noise, plenty for a keg.
 - Channel A, gain 128 (25 clock pulses per read). Bit-bang SCK, keep each high
-  pulse < 50 µs (disable preemption/IRQs during the 24-bit read, or use a short
-  critical section) – SCK high > 60 µs = power-down.
+  pulse < 50 µs (short critical section around each high phase) – SCK high
+  > 60 µs = power-down.
 - Load cell wire colors vary between vendors – if the reading goes negative with
   load, swap A+/A-.
 
@@ -104,6 +107,6 @@ Pins in `main/board.h`:
 ```c
 /* ---- External sensors ---- */
 #define BOARD_HX711_DOUT        GPIO_NUM_17
-#define BOARD_HX711_SCK         GPIO_NUM_16
-#define BOARD_DS18B20_DQ        GPIO_NUM_9
+#define BOARD_HX711_SCK         GPIO_NUM_9
+#define BOARD_DS18B20_DQ        GPIO_NUM_16
 ```

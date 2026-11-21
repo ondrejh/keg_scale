@@ -134,14 +134,6 @@ static void on_input(ui_input_t ev)
         s_screen = (s_screen + SCR_COUNT - 1) % SCR_COUNT;
         show_screen();
         break;
-    case UI_SWIPE_UP:           /* SIMULATION: put a full keg on and tap it */
-        scale_sim_keg_full();
-        refresh_values();
-        break;
-    case UI_SWIPE_DOWN:         /* SIMULATION: untap, empty keg stays */
-        scale_sim_keg_off();
-        refresh_values();
-        break;
     default:    /* taps: reserved for later */
         break;
     }

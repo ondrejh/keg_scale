@@ -43,7 +43,7 @@ void scale_init(void);
 
 float scale_interpolate(const scale_calib_t *c, int32_t raw);
 
-/* Factory calibration (also the simulated sensor model). */
+/* Factory calibration. */
 void scale_calib_default(scale_calib_t *c);
 
 /* Calibration point `units` at raw (NULL = current reading). An existing point
@@ -71,10 +71,3 @@ void scale_keg_untap(void);
 
 /* Keg fullness 0..100 %, 0 when no keg is tapped. */
 int scale_keg_pct(const scale_data_t *d);
-
-/* SIMULATION (task_scale.c) - remove together with the fake readings once the
- * HX711 driver exists. Full keg = tapped at 100 %, off = untapped, empty keg. */
-void scale_sim_keg_full(void);
-void scale_sim_keg_off(void);
-/* Put a full keg of `volume` beers on the (simulated) scale, not tapped yet. */
-void scale_sim_keg_load(float volume);
