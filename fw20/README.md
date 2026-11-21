@@ -43,7 +43,7 @@ Verify the numbering against the Waveshare schematic / silkscreen.
 | J1 | net     | ESP32-C6 | note                                                        |
 |----|---------|----------|-------------------------------------------------------------|
 | 1  | GND     | –        |                                                             |
-| 2  | VSYS    | –        | battery / USB rail ~3.4–5 V, unregulated                    |
+| 2  | VSYS    | –        | USB 5 V rail, unregulated                    |
 | 3  | CHIP_EN | EN       | reset – leave unconnected                                   |
 | 4  | GPIO9   | GPIO9    | strapping (must be high at boot) + BOOT button; free in FW  |
 | 5  | GND     | –        |                                                             |
@@ -70,33 +70,25 @@ Not the other way round: a push-pull HX711 SCK on GPIO9 would short to GND
 whenever BOOT is pressed, and the strap pull-up would hold the HX711 in
 power-down at boot.
 
-```
-           J1-6 3V3 ──┬────────────┬──────────────┐
-                      │            │             4k7
-              ┌───────┴──────┐  ┌──┴─────────┐    │
-              │ HX711 module │  │  DS18B20   │    │
- load cell    │          VCC │  │ VDD        │    │
- E+ (red)  ───┤ E+       VDD │  │         DQ ├────┴──── J1-4  GPIO9
- E- (blk)  ───┤ E-      DOUT ├──┼──────────────────── J1-12 GPIO17
- A- (wht)  ───┤ A-      SCK  ├──┼──────────────────── J1-11 GPIO16
- A+ (grn)  ───┤ A+       GND │  │ GND        │
-              └───────┬──────┘  └──┬─────────┘
-           J1-1 GND ──┴────────────┴─────────────────────
-```
-
 Long sensor cables: ~100 Ω series resistors on DQ/SCK/DOUT near J1 (+ ESD diode).
 
 HX711 notes:
-- Power the module from **3V3** (VCC and VDD both on 3V3 – logic levels then
-  match the ESP32-C6, no level shifter). On typical modules the on-board AVDD
-  regulator is set for ~4.3 V, so at 3V3 it just saturates (excitation ≈ 3.1 V) –
-  works fine, slightly lower full-scale signal.
+- Module (VCC and VDD) powered from **5 V**. DOUT is then a 5 V signal →
+  **resistor divider** into GPIO17 (the ESP32-C6 is not 5 V tolerant):
+  10 kΩ series (DOUT → GPIO17) + 20 kΩ GPIO17 → GND → 5 V × 20/30 = 3.33 V.
+  The 20 kΩ is also the GPIO17 pull-down – fine, GPIO17 is not a strapping pin.
+  Side effect: with the HX711 unpowered/unplugged DOUT reads low = "ready" and
+  returns all zeros – firmware should treat a constant 0 as "sensor missing".
+- The divider needs a **stable 5 V**: ESP VIH ≈ 0.75 × 3.3 V = 2.5 V → the
+  HX711 supply must stay above ~3.7 V.
+- **SCK (GPIO16 → HX711) is not shifted**: HX711 VIH = 0.7 × VDD = 3.5 V at 5 V,
+  a 3.3 V output is below spec. Often works in practice, but marginal – if
+  readings glitch, add a 5 V buffer with TTL inputs (74HCT1G125 / 74AHCT1G125)
+  or a BSS138 stage on SCK.
 - Keep RATE low (10 SPS, default on most modules) – less noise, plenty for a keg.
 - Channel A, gain 128 (25 clock pulses per read). Bit-bang SCK, keep each high
   pulse < 50 µs (disable preemption/IRQs during the 24-bit read, or use a short
   critical section) – SCK high > 60 µs = power-down.
-- Power saving on battery: hold SCK high between readings → HX711 sleeps
-  (~1 µA); the first reading after wake-up should be discarded.
 - Load cell wire colors vary between vendors – if the reading goes negative with
   load, swap A+/A-.
 
