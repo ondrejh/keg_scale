@@ -54,6 +54,7 @@ class MockDevice:
         self.conf = load_json('conf.json')
         self.conf.setdefault('disp_timeout', 15)    # fw20 settings.h defaults
         self.conf.setdefault('disp_dim', 25)
+        self.conf.setdefault('disp_return', 30)
         self.secrets = {}   # passwords: stored, never sent back
         try:
             text = (ROOT / 'keglist.txt').read_text(encoding='utf-8')
@@ -150,8 +151,8 @@ class MockDevice:
             self.secrets['wpwd'] = f.get('wpwd', '')
             return True
 
-        if 'disp_timeout' in f or 'disp_dim' in f:
-            limits = {'disp_timeout': 3600, 'disp_dim': 100}
+        if any(k in f for k in ('disp_timeout', 'disp_dim', 'disp_return')):
+            limits = {'disp_timeout': 3600, 'disp_dim': 100, 'disp_return': 3600}
             new = {}
             for key, top in limits.items():
                 if key in f:

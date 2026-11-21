@@ -18,3 +18,5 @@
 #define BRIGHT_ON               255
 #define BRIGHT_DIM              64
 #define IDLE_DIM_MS             15000
+/* Display: back to the main screen after RETURN_MAIN_MS without touch (0 = never) */
+#define RETURN_MAIN_MS          30000

@@ -12,7 +12,7 @@
 
 #define NET_CONFIG_VERSION  1
 #define MQTT_CONFIG_VERSION 1
-#define DISP_CONFIG_VERSION 1
+#define DISP_CONFIG_VERSION 2   /* 2: + return_ms */
 
 typedef struct {
     char ssid[33];      /* max 32 chars + NUL */
@@ -40,6 +40,7 @@ esp_err_t mqtt_config_save(void);
 /* Display idle dimming (web config page). Defaults: settings.h. */
 typedef struct {
     uint32_t idle_ms;   /* dim after this long without touch, 0 = never */
+    uint32_t return_ms; /* back to the main screen after this long, 0 = never */
     uint8_t dim;        /* brightness when dimmed, 0..255 */
 } disp_config_t;
 

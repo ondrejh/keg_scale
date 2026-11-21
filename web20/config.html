@@ -37,6 +37,8 @@ function load() {
 			document.getElementById("disp_timeout").value = data.disp_timeout;
 		if ('disp_dim' in data)
 			document.getElementById("disp_dim").value = data.disp_dim;
+		if ('disp_return' in data)
+			document.getElementById("disp_return").value = data.disp_return;
     })
     .catch(error => {
     	console.error("Error loading conf.json:", error);
@@ -154,6 +156,10 @@ function save(geto) {
 					<label for="disp_dim">Jas po ztmavení (%)</label>
 					<input id="disp_dim" class="field" type="number" min="0" max="100" placeholder="25"/>
 				</p>
+				<p class="line">
+					<label for="disp_return">Návrat na hlavní obrazovku po (s, 0 = nikdy)</label>
+					<input id="disp_return" class="field" type="number" min="0" max="3600" placeholder="30"/>
+				</p>
 				<p class="btns">
 					<button id="save_disp" class="btn">Potvrdit</button>
 				</p>
@@ -200,6 +206,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			geto['disp_timeout'] = t;
 		if (d !== "")
 			geto['disp_dim'] = d;
+		const r = document.getElementById("disp_return").value;
+		if (r !== "")
+			geto['disp_return'] = r;
 		save(geto);
 	});
 

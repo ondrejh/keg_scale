@@ -298,7 +298,8 @@ static bool do_mqtt(const char *ctype)
     return true;
 }
 
-/* disp_timeout=<s> (0 = never) and/or disp_dim=<%>: display idle dimming.
+/* disp_timeout=<s>, disp_dim=<%>, disp_return=<s>: display idle dimming and
+ * return to the main screen (timeouts 0 = never). Any subset may be sent.
  * Applied immediately (task_disp reads g_disp_config). */
 static bool do_display(const char *ctype)
 {
@@ -318,6 +319,12 @@ static bool do_display(const char *ctype)
             return false;
         dc.dim = (uint8_t)((n * 255 + 50) / 100);
     }
+    if (form_has(s_form, ctype, "disp_return")) {
+        if (!form_get(s_form, ctype, "disp_return", v, sizeof(v)) || !parse_int(v, &n) ||
+            n < 0 || n > 3600)
+            return false;
+        dc.return_ms = (uint32_t)n * 1000;
+    }
 
     if (memcmp(&dc, &g_disp_config, sizeof(dc)) == 0)
         return true;
@@ -327,7 +334,8 @@ static bool do_display(const char *ctype)
         ESP_LOGE(TAG, "display: save failed (%s)", esp_err_to_name(err));
         return false;
     }
-    ESP_LOGI(TAG, "display: dim %u after %lu s", dc.dim, (unsigned long)(dc.idle_ms / 1000));
+    ESP_LOGI(TAG, "display: dim %u after %lu s, main screen after %lu s", dc.dim,
+             (unsigned long)(dc.idle_ms / 1000), (unsigned long)(dc.return_ms / 1000));
     return true;
 }
 
@@ -354,7 +362,8 @@ static esp_err_t do_post(httpd_req_t *req)
     } else if (form_has(s_form, ctype, "mqtt_url") || form_has(s_form, ctype, "mqtt_topic") ||
                form_has(s_form, ctype, "mqtt_user")) {
         ok = do_mqtt(ctype);
-    } else if (form_has(s_form, ctype, "disp_timeout") || form_has(s_form, ctype, "disp_dim")) {
+    } else if (form_has(s_form, ctype, "disp_timeout") || form_has(s_form, ctype, "disp_dim") ||
+               form_has(s_form, ctype, "disp_return")) {
         ok = do_display(ctype);
     } else {
         ESP_LOGW(TAG, "do.php: unsupported request");
@@ -471,8 +480,10 @@ static esp_err_t conf_get(httpd_req_t *req)
         jstr(buf, sizeof(buf), &p, mqtt[i].val);
     }
     /* display: timeout in s, dim level in % of full brightness */
-    jcat(buf, sizeof(buf), &p, "%s\"disp_timeout\":%lu,\"disp_dim\":%u", p > 1 ? "," : "",
-         (unsigned long)(g_disp_config.idle_ms / 1000), (unsigned)((g_disp_config.dim * 100 + 127) / 255));
+    jcat(buf, sizeof(buf), &p, "%s\"disp_timeout\":%lu,\"disp_dim\":%u,\"disp_return\":%lu",
+         p > 1 ? "," : "", (unsigned long)(g_disp_config.idle_ms / 1000),
+         (unsigned)((g_disp_config.dim * 100 + 127) / 255),
+         (unsigned long)(g_disp_config.return_ms / 1000));
     jcat(buf, sizeof(buf), &p, "}");
     if (p >= sizeof(buf))
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "overflow");

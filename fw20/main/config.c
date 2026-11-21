@@ -4,7 +4,9 @@
 
 net_config_t g_net_config;
 mqtt_config_t g_mqtt_config;
-disp_config_t g_disp_config = { .idle_ms = IDLE_DIM_MS, .dim = BRIGHT_DIM };
+disp_config_t g_disp_config = {
+    .idle_ms = IDLE_DIM_MS, .return_ms = RETURN_MAIN_MS, .dim = BRIGHT_DIM,
+};
 
 esp_err_t config_load(void)
 {

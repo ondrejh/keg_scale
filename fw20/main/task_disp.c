@@ -58,8 +58,8 @@ static void show_screen(void)
 }
 
 /* ---- idle dimming: fade down after IDLE_DIM_MS without touch ---- */
-/* BRIGHT_ON: settings.h; timeout and dim level: g_disp_config (web config page,
- * defaults IDLE_DIM_MS / BRIGHT_DIM from settings.h) */
+/* BRIGHT_ON: settings.h; timeouts and dim level: g_disp_config (web config page,
+ * defaults IDLE_DIM_MS / BRIGHT_DIM / RETURN_MAIN_MS from settings.h) */
 #define FADE_OUT_MS     1500
 #define FADE_IN_MS      200
 #define WAKE_IGNORE_MS  500     /* the waking touch must not swipe/tap too */
@@ -97,12 +97,14 @@ static void idle_check(void)
     uint32_t timeout = g_disp_config.idle_ms;   /* may change from the web */
     bool want_dim = timeout && idle >= timeout;
 
+    uint32_t ret = g_disp_config.return_ms;
+    if (ret && idle >= ret && s_screen != SCR_MAIN) {  /* leave secondary pages */
+        s_screen = SCR_MAIN;
+        show_screen();
+    }
+
     if (!s_dimmed && want_dim) {
         s_dimmed = true;
-        if (s_screen != SCR_MAIN) {     /* leave secondary pages when idle */
-            s_screen = SCR_MAIN;
-            show_screen();
-        }
         fade_to(g_disp_config.dim, FADE_OUT_MS);
     } else if (s_dimmed && !want_dim) {
         s_dimmed = false;

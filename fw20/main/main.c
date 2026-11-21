@@ -45,8 +45,8 @@ void app_main(void)
     err = disp_config_load();
     if (err != ESP_OK && err != ESP_ERR_NOT_FOUND)
         ESP_LOGE(TAG, "display config load failed (%s)", esp_err_to_name(err));
-    ESP_LOGI(TAG, "display dim %u after %lu ms", g_disp_config.dim,
-             (unsigned long)g_disp_config.idle_ms);
+    ESP_LOGI(TAG, "display dim %u after %lu ms, main screen after %lu ms", g_disp_config.dim,
+             (unsigned long)g_disp_config.idle_ms, (unsigned long)g_disp_config.return_ms);
 
     scale_init();
 
