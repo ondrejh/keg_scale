@@ -50,5 +50,10 @@
  * STAT pin from VSYS - hardware only, cannot be switched off in firmware. */
 
 /* ---- Buttons (active low, pull-up) ---- */
-#define BOARD_BTN_BOOT          GPIO_NUM_9
+#define BOARD_BTN_BOOT          GPIO_NUM_9   /* shared with BOARD_DS18B20_DQ - no button handler */
 #define BOARD_BTN_PWR           GPIO_NUM_1   /* PWR_KEY; pressing also powers on via D2 */
+
+/* ---- External sensors on the 12-pin header J1 (see README) ---- */
+#define BOARD_HX711_DOUT        GPIO_NUM_17  /* J1-12 ESP_RXD (U0RXD) */
+#define BOARD_HX711_SCK         GPIO_NUM_16  /* J1-11 ESP_TXD (U0TXD); ROM log toggles it at reset */
+#define BOARD_DS18B20_DQ        GPIO_NUM_9   /* J1-4, open-drain 1-wire + 4k7 pull-up to 3V3 */

@@ -37,39 +37,54 @@ idf.py -p /dev/ttyACM0 flash monitor
 
 ## External sensors – suggested wiring (HX711 load cell, DS18B20)
 
-Free GPIOs on the board (everything else is taken, see `main/board.h`):
+Sensors connect to the board's 12-pin header **J1** (`schematic/keg20`).
+Verify the numbering against the Waveshare schematic / silkscreen.
 
-| GPIO | default role        | note                                                  |
-|------|---------------------|-------------------------------------------------------|
-| 14   | –                   | plain GPIO, not strapping                             |
-| 16   | U0TXD               | UART0 free (console is USB-Serial-JTAG); ROM boot log toggles it at reset |
-| 17   | U0RXD               | UART0 free; input at boot                             |
-| 12/13| USB D-/D+           | **do not use** – flashing + console                   |
+| J1 | net     | ESP32-C6 | note                                                        |
+|----|---------|----------|-------------------------------------------------------------|
+| 1  | GND     | –        |                                                             |
+| 2  | VSYS    | –        | battery / USB rail ~3.4–5 V, unregulated                    |
+| 3  | CHIP_EN | EN       | reset – leave unconnected                                   |
+| 4  | GPIO9   | GPIO9    | strapping (must be high at boot) + BOOT button; free in FW  |
+| 5  | GND     | –        |                                                             |
+| 6  | 3V3     | –        | regulated 3.3 V                                             |
+| 7  | SCL     | GPIO7    | I2C0, shared with touch CST820 (0x15) and ES8311            |
+| 8  | SDA     | GPIO8    | I2C0 (strapping pin)                                        |
+| 9  | USB1_N  | GPIO12   | USB D- – **do not use** (flashing + console)                |
+| 10 | USB1_P  | GPIO13   | USB D+ – **do not use**                                     |
+| 11 | ESP_TXD | GPIO16   | U0TXD, free (console is USB-Serial-JTAG); ROM log toggles it at reset |
+| 12 | ESP_RXD | GPIO17   | U0RXD, free; input at boot                                  |
 
-Avoid strapping pins (4, 5, 8, 9, 15) – all already used anyway.
-Check the board schematic / header pinout that 14/16/17 are actually brought out.
+Only GPIO9, GPIO16 and GPIO17 are free (plus the shared I2C bus). GPIO14 is
+**not** brought out to J1.
 
-Suggested assignment:
+Assignment:
 
-| signal       | ESP32-C6 | why                                                          |
-|--------------|----------|--------------------------------------------------------------|
-| HX711 DOUT   | GPIO17   | input; GPIO17 is input during boot → no contention with HX711 output |
-| HX711 PD_SCK | GPIO14   | output; quiet during boot (GPIO16 would toggle from ROM log and could put the HX711 into power-down / clock garbage) |
-| DS18B20 DQ   | GPIO16   | 1-wire open-drain; ROM log pulses at boot are harmless (no valid ROM command) |
+| signal       | J1 | ESP32-C6 | why                                                          |
+|--------------|----|----------|--------------------------------------------------------------|
+| HX711 DOUT   | 12 | GPIO17   | input during boot → no contention with the HX711 output      |
+| HX711 PD_SCK | 11 | GPIO16   | ROM log at reset idles high → HX711 just powers down; firmware resets it at init (SCK high > 60 µs, then low). Optionally `CONFIG_BOOT_ROM_LOG_ALWAYS_OFF` |
+| DS18B20 DQ   | 4  | GPIO9    | 1-wire is open-drain, pull-up keeps the strap high (SPI boot); pressing BOOT just shorts the bus, harmless |
+
+Not the other way round: a push-pull HX711 SCK on GPIO9 would short to GND
+whenever BOOT is pressed, and the strap pull-up would hold the HX711 in
+power-down at boot.
 
 ```
-               3V3 ──┬────────────┬──────────────┐
-                     │            │             4k7
-             ┌───────┴──────┐  ┌──┴─────────┐    │
-             │ HX711 module │  │  DS18B20   │    │
- load cell   │          VCC │  │ VDD        │    │
- E+ (red)  ──┤ E+       VDD │  │         DQ ├────┴──── GPIO16
- E- (blk)  ──┤ E-      DOUT ├──┼──────────── GPIO17
- A- (wht)  ──┤ A-      SCK  ├──┼──────────── GPIO14
- A+ (grn)  ──┤ A+       GND │  │ GND        │
-             └───────┬──────┘  └──┬─────────┘
-               GND ──┴────────────┴───────────────────── GND
+           J1-6 3V3 ──┬────────────┬──────────────┐
+                      │            │             4k7
+              ┌───────┴──────┐  ┌──┴─────────┐    │
+              │ HX711 module │  │  DS18B20   │    │
+ load cell    │          VCC │  │ VDD        │    │
+ E+ (red)  ───┤ E+       VDD │  │         DQ ├────┴──── J1-4  GPIO9
+ E- (blk)  ───┤ E-      DOUT ├──┼──────────────────── J1-12 GPIO17
+ A- (wht)  ───┤ A-      SCK  ├──┼──────────────────── J1-11 GPIO16
+ A+ (grn)  ───┤ A+       GND │  │ GND        │
+              └───────┬──────┘  └──┬─────────┘
+           J1-1 GND ──┴────────────┴─────────────────────
 ```
+
+Long sensor cables: ~100 Ω series resistors on DQ/SCK/DOUT near J1 (+ ESD diode).
 
 HX711 notes:
 - Power the module from **3V3** (VCC and VDD both on 3V3 – logic levels then
@@ -92,11 +107,11 @@ DS18B20 notes:
 - 12-bit conversion takes 750 ms – start conversion, read on the next cycle,
   don't block the scale task.
 
-Add the pins to `main/board.h` once confirmed:
+Pins in `main/board.h`:
 
 ```c
 /* ---- External sensors ---- */
 #define BOARD_HX711_DOUT        GPIO_NUM_17
-#define BOARD_HX711_SCK         GPIO_NUM_14
-#define BOARD_DS18B20_DQ        GPIO_NUM_16
+#define BOARD_HX711_SCK         GPIO_NUM_16
+#define BOARD_DS18B20_DQ        GPIO_NUM_9
 ```
