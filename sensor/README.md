@@ -1,11 +1,11 @@
-# keg20 sensor bridge (MSP430FR2000)
+# keg20 sensor bridge (MSP430FR2100)
 
 Small MCU between the keg20 display board (ESP32-C6, header J1) and the sensors.
 It reads the sensors (HX711 load cell and DS18B20 now, more later) and sends **raw
 data** over the UART. The ESP does the rest: CRC checks, filtering, calibration
 and conversion to units.
 
-Status: **design only**. The firmware will go in `sensor/fw/`.
+Status: firmware written (`sensor/fw/`), builds, **not tested on hardware yet**.
 
 ## Why
 
@@ -21,21 +21,23 @@ same UART, so the ESP can check and reflash the MSP firmware with no programmer.
 
 ## MCU
 
-**MSP430FR2000**, TSSOP-16 (PW), datasheet SLASE78E.
+**MSP430FR2100**, TSSOP-16 (PW), datasheet SLASE78E. The pinout is the same for the whole family.
 
-| part         | FRAM    | RAM   | note                          |
-|--------------|---------|-------|-------------------------------|
-| MSP430FR2000 | 0.5 KB  | 512 B | first choice                  |
-| MSP430FR2100 | 1 KB    | 512 B | pin compatible, if 512 B is too tight |
-| MSP430FR2111 | 3.75 KB | 1 KB  | pin compatible, plenty        |
+| part         | FRAM    | code space (linker) | RAM   | note                          |
+|--------------|---------|---------------------|-------|-------------------------------|
+| MSP430FR2000 | 0.5 KB  | 384 B               | 512 B | **too small**: firmware is ~800 B in C |
+| MSP430FR2100 | 1 KB    | 896 B               | 512 B | default build, ~90 B left     |
+| MSP430FR2111 | 3.75 KB | 3.6 KB              | 1 KB  | room for more sensors         |
+
+The FR2000 could only be used with the firmware rewritten in assembly, and even then it would be tight.
 
 Toolchain: TI MSP430-GCC 9.3 (`/usr/lib/gcc/msp430/bin/msp430-elf-gcc`, includes
-`msp430fr2000.h/.ld`). The system `msp430-gcc` 4.6 (mspgcc) is too old for the FR2xxx parts.
+the device headers and `.ld` files). The system `msp430-gcc` 4.6 (mspgcc) is too old for the FR2xxx parts.
 
 ## Wiring to J1
 
 ```
-                 J1 (ESP32-C6 board)                     MSP430FR2000 (TSSOP-16)
+                 J1 (ESP32-C6 board)                     MSP430FR2100 (TSSOP-16)
 
   J1-11  ESP_TXD  GPIO16 ──────────────────┬──────────── 12  P1.6 / UCA0RXD / BSLRX
                                            └──────────── 3   TEST / SBWTCK
@@ -104,15 +106,22 @@ the time and toggles with the UART data.
 UART **9600 8E1**, the same format as the BSL, so the ESP never reconfigures its
 UART. The MSP sends ASCII lines ending in `\n`, so a plain terminal is enough for testing.
 
-| line         | when                         | content                                           |
-|--------------|------------------------------|---------------------------------------------------|
-| `V<xx>`      | after reset                  | firmware version (hex)                            |
-| `H<6 hex>`   | each HX711 conversion (~10/s) | raw 24-bit two's complement value                 |
-| `T<18 hex>`  | every 2 s                    | raw DS18B20 scratchpad, 9 bytes (ESP checks CRC8, temp = int16 / 16 °C) |
-| `T`          | every 2 s                    | no presence pulse (DS18B20 missing)               |
+Every frame is `<type><hex payload>*<crc>\n`. The CRC is Dallas/Maxim CRC-8
+(reflected polynomial 0x8C, init 0) over every byte before `*`, sent as 2
+uppercase hex digits. The same CRC function checks the DS18B20 scratchpad on the MSP.
 
-- HX711 missing (DOUT still low after the 25th pulse, or never ready): no `H`
-  line. The ESP detects the timeout itself.
+| frame         | when                          | content                                        |
+|---------------|-------------------------------|------------------------------------------------|
+| `V<2 hex>*cc` | once after reset              | firmware version                               |
+| `H<6 hex>*cc` | each HX711 conversion (~10/s) | channel A raw value, 24-bit two's complement, MSB first |
+| `h<2 hex>*cc` | instead of `H`                | HX711 error: `01` not ready for 500 ms (missing), `02` DOUT still low after the 25th pulse (unpowered: the divider holds DOUT low) |
+| `T<4 hex>*cc` | ~1/s                          | DS18B20 raw temperature, int16, 1/16 °C (scratchpad CRC already checked) |
+| `t<2 hex>*cc` | instead of `T`                | DS18B20 error: `01` bus stuck low, `02` no presence pulse, `03` scratchpad CRC error |
+
+Examples: `V01*67`, `H00A1B2*4D`, `T0550*45` (85 °C). `sensor/fw/tools/decode.py`
+decodes and checks frames.
+
+- The ESP drops any frame that is malformed, too long or has a bad CRC (for example garbage after a reset).
 - The MSP app has **no RX handling**. BSL entry is done in hardware.
 - ~100 B/s in total, well within 9600 baud (~870 B/s with 8E1).
 
@@ -130,7 +139,7 @@ The MSP image is embedded in the fw20 image, so one `idf.py flash` updates both 
      matches the embedded image, the firmware is OK.
    - Password wrong → the FRAM BSL mass-erases. Then send the password of
      the erased chip (32 × 0xFF), write the image with *RX data block* (0x10;
-     ~512 B, under 1 s at 9600) and check the CRC.
+     ~800 B, about 1 s at 9600) and check the CRC.
 3. **Start the app:** TX low ≥ 100 µs, RST low → high (TEST low), wait for the
    `V<xx>` line and start reading `H`/`T` lines.
 4. It can't brick the MSP: hardware BSL entry doesn't depend on the app, so an
@@ -139,16 +148,31 @@ The MSP image is embedded in the fw20 image, so one `idf.py flash` updates both 
 BSL frame format: `0x80 NL NH CMD data… CKL CKH`, with CRC-CCITT over CMD + data.
 The BSL answers with an ACK byte (0x00), then a `0x80 …` response frame.
 
-## MSP firmware outline (`sensor/fw/`, planned)
+## MSP firmware (`sensor/fw/`)
 
-- Single superloop, no interrupts. DCO 8 MHz with FLL locked to REFO. UCA0 UART on P1.6/P1.7.
-- HX711 bit-banged: 24 + 1 pulses (channel A, gain 128). After the 25th pulse DOUT
-  must be high, otherwise the sensor is missing. Each SCK high phase is short (`__delay_cycles`).
-- DS18B20 bit-banged 1-wire. The steps alternate each second: `CC 44` (convert),
-  then `CC BE` + read 9 bytes. There is no CRC check on the MSP.
-- Hex output from a nibble table; `-Os` and minimal startup to fit 512 B.
-- `Makefile`: `msp430-elf-gcc -mmcu=msp430fr2000 -Os`, outputs `.elf`, TI-TXT and
-  `.bin`, prints the size. Switching to FR2100/FR2111 changes only `-mmcu`.
+```bash
+cd sensor/fw
+make                        # MSP430FR2100 (default): build/sensor.elf .hex .bin .lst, prints the size
+make MCU=msp430fr2111       # other part of the family
+python3 tools/decode.py --selftest
+```
+
+- `main.c`: a single superloop with no interrupts. The watchdog runs at 1 s (ACLK = REFO).
+  The DCO runs at 8 MHz with the FLL locked to REFO. UCA0 runs 9600 8E1 on P1.6/P1.7.
+- Main loop tick is about 10 ms:
+  - HX711: when DOUT goes low it reads 24 + 1 pulses (channel A, gain 128; SCK high
+    ~1 µs). After the 25th pulse DOUT must be high, else error `h02`. No conversion
+    for 50 ticks gives error `h01`.
+  - DS18B20: a 100-tick cycle. Tick 0 sends `CC 44` (convert). Tick 80 (after 800 ms)
+    sends `CC BE` and reads 9 bytes, then checks the CRC.
+  - 1-wire is bit-banged open drain using P1DIR, with timings from Maxim AN126:
+    reset 480/70/410 µs, slot ~60 µs, read sample at ~10 µs.
+- Size tricks:
+  - native 16-bit types
+  - all frames go through one `frame()` function
+  - globals in `.noinit`, so no bss init code is linked
+  - a single asm delay loop instead of many inline `__delay_cycles`
+- `compile_flags.txt` is for clangd (editor diagnostics) only.
 
 ## Standalone test
 
@@ -161,21 +185,33 @@ Use a 3.3 V USB-UART adapter (FTDI/CP2102) instead of the ESP:
 | RTS     | RST through 1k (pin 4)  |
 | 3V3/GND | DVCC/DVSS               |
 
-- **Monitor:** `picocom -b 9600 -y e /dev/ttyUSB0`. Expect `V01`, then
-  `H…` lines at ~10/s and `T…` every 2 s. Load the cell and warm the sensor;
+- **Monitor:** `python3 sensor/fw/tools/decode.py /dev/ttyUSB0` (or
+  `picocom -b 9600 -y e /dev/ttyUSB0`). Expect `V01`, then `H…` frames at ~10/s
+  and `T…` at ~1/s. Load the cell and warm the sensor;
   the values should react.
-- **Flash:** `sensor/fw/tools/bsl.py` (planned, pyserial). It drives RST from RTS
-  and makes the TEST pulses on TX with `break_condition` (break = TX low). It runs
-  the same algorithm as the ESP boot flow and serves as the reference
-  implementation for the ESP port.
+- **Flash:** `python3 sensor/fw/tools/bsl.py flash /dev/ttyUSB0 sensor/fw/build/sensor.hex`
+  (pyserial).
+  - It drives RST from RTS and makes the TEST pulses on TX with a UART break
+    (break = TX low).
+  - It runs the same algorithm as the ESP boot flow: the image's vector table is
+    the password, a matching CRC means "up to date" and the write is skipped,
+    otherwise it erases, writes and verifies with the CRC check.
+  - It then resets the MSP into the app.
+  - Other commands: `bsl.py erase PORT`, `bsl.py reset PORT`.
+  - Options: `--force` (flash even if up to date), `--no-reset`, `-v` (packet
+    dump), `--test dtr` (TEST wired to DTR instead of TX),
+    `--invert-reset`/`--invert-test`.
+  - `bsl.py --selftest` runs the flash flow against a simulated BSL.
+  - The adapter must support break (FTDI and CP210x do).
 
 ## Open points (verify on the bench / in SLAU610)
 
 - [ ] Exact FR2xx BSL entry timing (pulse widths, TEST high → RST high delay)
-- [ ] Wrong BSL password → mass erase on FR2000?
-- [ ] BSL CRC check command and maximum RX data block size on FR2000
+- [ ] Wrong BSL password → mass erase on FR2100?
+- [ ] BSL CRC check command and maximum RX data block size on FR2100
 - [ ] App keeps running with TEST toggling (scope: no resets, no stalls), and the
       BSL keeps working with TEST high
 - [ ] Is the 1k on RST needed (look for contention in the TDO slot)?
 - [ ] REFO / DCO accuracy for 9600 baud over the keg temperature range
-- [ ] Firmware fits in 512 B, otherwise use FR2100/FR2111
+- [ ] Check timing on the scope: HX711 SCK high < 50 µs, 1-wire slots and the read sample point
+- [ ] Unplug each sensor and check the error frames (`h01`/`h02`, `t01`/`t02`)

@@ -1,0 +1,4 @@
+-xc
+--target=msp430
+-I/usr/lib/gcc/msp430/include
+-D__MSP430FR2100__
