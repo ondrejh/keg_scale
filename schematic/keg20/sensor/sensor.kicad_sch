@@ -10,6 +10,195 @@
 		(rev "1")
 	)
 	(lib_symbols
+		(symbol "Jumper:SolderJumper_2_Bridged"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "JP"
+			(at 0 2.032 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SolderJumper_2_Bridged"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 -6.35 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Solder Jumper, 2-pole, closed/bridged"
+			(at 0 -5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "solder jumper SPST"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "SolderJumper*Bridged*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "SolderJumper_2_Bridged_0_1"
+			(rectangle
+				(start -0.508 0.508)
+				(end 0.508 -0.508)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy -0.254 1.016) (xy -0.254 -1.016)
+				)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -0.254 -1.016)
+				(mid -1.2656 0)
+				(end -0.254 1.016)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(arc
+				(start 0.254 1.016)
+				(mid 1.2656 0)
+				(end 0.254 -1.016)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0.254 1.016) (xy 0.254 -1.016)
+				)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "SolderJumper_2_Bridged_1_1"
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 0 180)
+				(length 3.81)
+				(name "B"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
 		(symbol "Power_Protection:SP0502BAHT"
 		(pin_names
 			(hide yes)
@@ -4386,7 +4575,7 @@
 		)
 		(uuid "df4ddbae-edda-46d6-b635-d39b0512de4b")
 	)
-	(text "TEST is tied to ESP_TXD (BSL entry over UART).\nNo capacitor on RST: max 1.1 nF with Spy-Bi-Wire."
+	(text "TEST is tied to ESP_TXD through JP3 (BSL entry over UART).\nNo capacitor on RST: max 1.1 nF with Spy-Bi-Wire."
 		(exclude_from_sim no)
 		(at 50.8 107.95 0)
 		(effects
@@ -4447,12 +4636,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "33ffacbf-57c1-4b47-bbba-0c4de88d6cd3")
-	)
-	(junction
-		(at 80.01 83.82)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "482dc800-4fe5-4589-a768-6f700b8c655f")
 	)
 	(junction
 		(at 213.36 88.9)
@@ -4968,7 +5151,7 @@
 	)
 	(wire
 		(pts
-			(xy 80.01 83.82) (xy 91.44 83.82)
+			(xy 83.82 83.82) (xy 91.44 83.82)
 		)
 		(stroke
 			(width 0)
@@ -11219,6 +11402,61 @@
 		(pin "1" (uuid "0fa1705a-d223-466b-8b77-bbed5b819c3a"))
 		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "#PWR036") (unit 1))))
 	)
+	(label "MSP_TEST" (at 83.82 83.82 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "54e4b654-22c3-4503-b630-05a81c460f9d"))
+	(wire (pts (xy 88.9 40.64) (xy 93.98 40.64)) (stroke (width 0) (type default)) (uuid "eddc60e8-a7cf-44ce-83f6-af409da0ce37"))
+	(label "MSP_RXD" (at 88.9 40.64 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4a783a22-c718-43b9-98e3-fb131a2084ca"))
+	(symbol (lib_id "Jumper:SolderJumper_2_Bridged") (at 99.06 40.64 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "8af89bec-f76b-4dc4-83cc-4f8c0bef71d5")
+		(property "Reference" "JP3" (at 99.06 38.1 0)  (effects (font (size 1.27 1.27))))
+		(property "Value" "TEST_RX" (at 99.06 43.434 0)  (effects (font (size 1.27 1.27))))
+		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" (at 99.06 40.64 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "~" (at 99.06 40.64 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "7d601557-fb12-4ce7-9a05-006112614521")) (pin "2" (uuid "c5706e6f-7b4d-4282-80f2-369890f3e1a6"))
+		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "JP3") (unit 1))))
+	)
+	(wire (pts (xy 104.14 40.64) (xy 118.11 40.64)) (stroke (width 0) (type default)) (uuid "a1c037e7-0817-469f-81d1-8e01376e7a88"))
+	(wire (pts (xy 118.11 40.64) (xy 135.89 40.64)) (stroke (width 0) (type default)) (uuid "df3e266a-a6f1-4491-8daf-691048e3fd93"))
+	(label "MSP_TEST" (at 105.41 40.64 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "6982ee4b-ebcf-44e0-8865-6854b711f53d"))
+	(junction (at 118.11 40.64) (diameter 0) (color 0 0 0 0) (uuid "cc419796-5fb4-443d-bf06-1289fbc5a4e5"))
+	(symbol (lib_id "Device:R") (at 118.11 44.45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "8ead9098-5688-43e4-83ac-7bf229b7dda6")
+		(property "Reference" "R8" (at 120.142 43.434 0)  (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "10k" (at 120.142 45.72 0)  (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 118.11 44.45 0) (hide yes) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Datasheet" "~" (at 118.11 44.45 0) (hide yes) (effects (font (size 1.27 1.27)) (justify left)))
+		(pin "1" (uuid "429aa903-b70f-4b3f-9075-d88ffc354cb4")) (pin "2" (uuid "50f81201-153a-403a-9a29-243f07aa1045"))
+		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "R8") (unit 1))))
+	)
+	(symbol (lib_id "power:GND") (at 118.11 48.26 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "2367d0e4-cc24-4cb4-9c4d-e03fdff11895")
+		(property "Reference" "#PWR037" (at 118.11 54.61 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "GND" (at 118.11 52.07 0)  (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 118.11 48.26 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 118.11 48.26 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "ae18d534-e4f9-49ba-8af6-a0429a6240df"))
+		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "#PWR037") (unit 1))))
+	)
+	(symbol (lib_id "Connector_Generic:Conn_01x03") (at 140.97 40.64 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "4c011399-18e3-431c-a4f8-46dfb9dceb3b")
+		(property "Reference" "J8" (at 140.97 35.56 0)  (effects (font (size 1.27 1.27))))
+		(property "Value" "SBW" (at 140.97 46.228 0)  (effects (font (size 1.27 1.27))))
+		(property "Footprint" "keg01:POGO_PADS_3" (at 140.97 40.64 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "~" (at 140.97 40.64 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "0046f4cb-3b2d-40b8-b75b-889276511fb0")) (pin "2" (uuid "bd38902f-b0d2-4a13-8433-b691d51e75db")) (pin "3" (uuid "586e9a45-4bb0-4e38-ac5b-5f9a7b95271c"))
+		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "J8") (unit 1))))
+	)
+	(text "RST" (exclude_from_sim no) (at 143.51 38.1 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "0cf51d53-711e-4c98-bc68-15a02ecd8541"))
+	(text "TEST" (exclude_from_sim no) (at 143.51 40.64 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "4957d781-2170-4870-b85a-0a81291c87cc"))
+	(text "GND" (exclude_from_sim no) (at 143.51 43.18 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "d970758b-7481-4443-bb8e-8156f885e800"))
+	(wire (pts (xy 127 38.1) (xy 135.89 38.1)) (stroke (width 0) (type default)) (uuid "ff3e8b8a-79c7-4224-8e40-9afbba3b10c4"))
+	(label "MSP_RST" (at 127 38.1 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "77f51dab-c667-44a0-b143-b7fb79eec5ed"))
+	(wire (pts (xy 135.89 43.18) (xy 133.35 43.18)) (stroke (width 0) (type default)) (uuid "5700c0e4-4c17-4886-a625-ca07bc40c6c6"))
+	(wire (pts (xy 133.35 43.18) (xy 133.35 45.72)) (stroke (width 0) (type default)) (uuid "b39f8e6c-2719-45de-ae46-fc430a287752"))
+	(symbol (lib_id "power:GND") (at 133.35 45.72 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b2296c43-6df4-488c-8655-c6532a18434c")
+		(property "Reference" "#PWR038" (at 133.35 52.07 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "GND" (at 133.35 49.53 0)  (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 133.35 45.72 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 133.35 45.72 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "136fadf9-c0b8-4a89-9d89-c11369042ce7"))
+		(instances (project "sensor" (path "/f00e49b5-722d-4f9c-8d92-d405db17b71c" (reference "#PWR038") (unit 1))))
+	)
+	(text "Programming fallback: Spy-Bi-Wire pogo pads J8, J1 disconnected.\nIf TEST on the UART line does not work: cut JP3, fit R8 (TEST low)." (exclude_from_sim no) (at 88.9 33.02 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3cc86082-5ae7-4eaa-afa6-cc4ab1f6d134"))
 	(sheet_instances
 		(path "/"
 			(page "1")
