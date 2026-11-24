@@ -3,12 +3,14 @@
 
     host.py PORT monitor [SECONDS]
     host.py PORT cmd V | S | J | P 0055AAFF | L 02 0A
-    host.py PORT stress [N]         pings with random and worst-case data
+    host.py PORT stress [N]         pings with random and worst-case data (one-wire: between the
+                                    heartbeats; stress N any: at any time, collisions expected)
     host.py PORT break [MS]         TX (= TEST, RX) low for MS, MSP must survive
     host.py PORT rst-test           RST pulse with TEST high, then with TEST low
     host.py --selftest
 
 RST is on RTS (active low) unless --rst dtr.
+--onewire: adapter TX and RX on the same line (TX open drain); the echo is checked.
 """
 import argparse
 import os
@@ -38,8 +40,10 @@ def parse(line):
 
 
 class Link:
-    def __init__(self, ser, verbose=False):
+    def __init__(self, ser, verbose=False, onewire=False):
         self.ser = ser
+        self.onewire = onewire
+        self.collisions = 0     # one-wire: own echo came back different
         self.verbose = verbose
         self.buf = b''
         self.bad = []           # undecodable lines
@@ -56,7 +60,7 @@ class Link:
                 f = parse(raw.decode('latin1'))
                 if f is None:
                     # junk at reset (TX glitch, BSL NAK) glued to the boot frame, only there
-                    g = parse(raw.lstrip(bytes(range(0x80, 0x100))).decode('latin1'))
+                    g = parse(raw.lstrip(b'\x00' + bytes(range(0x80, 0x100))).decode('latin1'))
                     if g and g[0] == 'B':
                         f, self.junk = g, self.junk + 1
                 if self.verbose:
@@ -76,11 +80,41 @@ class Link:
             self.buf += self.ser.read(max(1, self.ser.in_waiting))
 
     def send(self, typ, payload=b''):
-        self.ser.write((make_frame(typ, payload.hex().upper()) + '\n').encode())
+        return self.write((make_frame(typ, payload.hex().upper()) + '\n').encode())
+
+    def write(self, data):
+        """Write; in one-wire mode wait for a free line first and check the echo."""
+        if not self.onewire:
+            self.ser.write(data)
+            return True
+        # a USB adapter delivers a received frame only after its end: wait for longer than
+        # an MSP heartbeat (2 ms pause + 10 ms), or we would talk over it
+        self.ser.timeout = 0.025
+        while True:
+            d = self.ser.read(max(1, self.ser.in_waiting))
+            if not d:
+                break
+            self.buf += d
+        self.ser.write(data)
+        self.ser.timeout = 0.03 + len(data) * 0.0012
+        echo = self.ser.read(len(data))
+        if echo == data:
+            return True
+        self.collisions += 1
+        if self.verbose:
+            print('   echo', echo, 'expected', data)
+        time.sleep(0.05)
+        self.ser.reset_input_buffer()
+        return False
 
     def request(self, typ, payload=b'', timeout=0.5):
         """Send, return the answer (B/T frames are recorded and skipped), or None."""
-        self.send(typ, payload)
+        for _ in range(5):
+            if self.send(typ, payload):
+                break
+            self.write(b'\n')           # flush what the MSP got of it
+        else:
+            return None
         end = time.time() + timeout
         while True:
             f = self.poll(max(0, end - time.time()))
@@ -89,15 +123,21 @@ class Link:
 
     def sync(self):
         """Autobaud pulses for a chip without calibration; ignored otherwise."""
+        if self.onewire:
+            # exactly two pulses (the MSP needs two), then leave the line to the boot frame
+            for _ in range(2):
+                self.write(b'\x80\x80')
+                time.sleep(0.08)
+            return
         for _ in range(8):
-            self.ser.write(b'\x80')
+            self.write(b'\x80')
             self.ser.flush()
             time.sleep(0.01)
 
     def alive(self):
         """Version of the running test app, or None."""
         self.sync()
-        self.ser.write(b'\n')
+        self.write(b'\n')
         for _ in range(3):
             f = self.request('V')
             if f and f[0] == 'V' and len(f[1]) == 1:
@@ -142,7 +182,18 @@ def monitor(link, seconds):
         nbad = len(link.bad)
 
 
-def stress(link, n):
+def between_beats(link):
+    """One-wire: wait until the next heartbeat is past, so that a ping can't collide with it."""
+    while not link.beats or (time.time() - link.beats[-1][0]) % 1.0 > 0.80:
+        seen = len(link.beats)
+        end = time.time() + 1.3
+        while len(link.beats) == seen and time.time() < end:
+            link.poll(0.05)
+        if len(link.beats) == seen:
+            return
+
+
+def stress(link, n, slots=True):
     s0 = link.request('S')
     if not s0 or s0[0] != 's':
         sys.exit('no status from the MSP')
@@ -153,12 +204,14 @@ def stress(link, n):
     fixed = [b'\x00' * 8, b'\xFF' * 8, b'\x55' * 8, b'\xAA' * 8, b'\x80' * 8, b'\x01']
     t0 = time.time()
     for i in range(n):
+        if link.onewire and slots:
+            between_beats(link)
         data = fixed[i // 2 % len(fixed)] if i % 2 else \
             bytes(random.randrange(256) for _ in range(random.randint(1, 8)))
         f = link.request('P', data)
         if f is None:
             lost += 1
-            link.ser.write(b'\n')       # resynchronise the line parser
+            link.write(b'\n')           # resynchronise the line parser
         elif f != ('p', bytes(b ^ 0xFF for b in data)):
             wrong += 1
     dt = time.time() - t0
@@ -171,6 +224,8 @@ def stress(link, n):
         ok = ok and s1[1][3:] is not None and s1[1][5:] == s0[1][5:]
     print('%d pings in %.0f s: lost %d, wrong %d, bad lines %d, heartbeat gaps %d, resets %d'
           % (n, dt, lost, wrong, len(link.bad), gaps, len(link.boots)))
+    if link.onewire:
+        print('collisions seen in the echo and repeated: %d' % link.collisions)
     print('PASS' if ok else 'FAIL')
     return ok
 
@@ -182,7 +237,8 @@ def brk(link, ms):
     time.sleep(ms / 1000.0)
     link.ser.break_condition = False
     time.sleep(0.05)
-    link.ser.write(b'\n')
+    link.ser.reset_input_buffer()
+    link.write(b'\n')
     s1 = link.request('S')
     print('before:', describe(s0) if s0 else None)
     print('after: ', describe(s1) if s1 else None)
@@ -262,6 +318,28 @@ def selftest():
                     self.line += bytes([c])
     assert Link(Echo()).alive() == 2
     assert stress(Link(Echo()), 50)
+
+    class OneWire(Echo):        # everything written comes back
+        corrupt = 0
+
+        def write(self, data):
+            self.corrupt -= 1
+            if self.corrupt == 0:
+                self.out += b'?' + data[1:]
+                return
+            self.out += data
+            super().write(data)
+
+        def reset_input_buffer(self):
+            self.out = b''
+    old_sleep, time.sleep = time.sleep, lambda s: None
+    assert Link(OneWire(), onewire=True).alive() == 2
+    assert stress(Link(OneWire(), onewire=True), 50, False)
+    o = OneWire()
+    o.corrupt = 2
+    lk = Link(o, onewire=True)
+    assert lk.request('V') and lk.request('V') == ('V', b'\x02') and lk.collisions == 1
+    time.sleep = old_sleep
     e = Echo()
     e.write = lambda d: None
     assert Link(e).request('V', timeout=0.05) is None
@@ -277,10 +355,11 @@ def main():
     ap.add_argument('action', choices=['monitor', 'cmd', 'stress', 'break', 'rst-test'])
     ap.add_argument('args', nargs='*')
     ap.add_argument('--rst', choices=['rts', 'dtr'], default='rts')
+    ap.add_argument('--onewire', action='store_true')
     ap.add_argument('-v', '--verbose', action='store_true')
     a = ap.parse_args()
     ser = open_port(a.port)
-    link = Link(ser, a.verbose)
+    link = Link(ser, a.verbose, a.onewire)
     try:
         if a.action == 'monitor':
             link.sync()
@@ -296,7 +375,8 @@ def main():
             f = link.request(a.args[0], bytes.fromhex(''.join(a.args[1:])))
             print('%s  %s' % (f[0], describe(f)) if f else 'no answer')
         elif a.action == 'stress':
-            sys.exit(0 if stress(link, int(a.args[0]) if a.args else 1000) else 1)
+            sys.exit(0 if stress(link, int(a.args[0]) if a.args else 1000,
+                                 'any' not in a.args) else 1)
         elif a.action == 'break':
             brk(link, int(a.args[0]) if a.args else 200)
         else:

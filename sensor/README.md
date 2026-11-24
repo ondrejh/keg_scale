@@ -48,9 +48,9 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 | J1 | net     | keg20 J1 | ESP32-C6    | MSP pin | function                                          |
 |----|---------|----------|-------------|---------|---------------------------------------------------|
 | 1  | ESP_3V3 | 6        | 3V3         | –       | board 3V3, through JP1 1-2                        |
-| 2  | ESP_RXD | 12       | GPIO17 (RX) | 11      | P1.7 UCA0TXD / BSLTX, through R6 1k               |
-| 3  | ESP_TXD | 11       | GPIO16 (TX) | 12, 3   | P1.6 UCA0RXD / BSLRX **and** TEST, through R5 1k, TEST through JP3 |
-| 4  | ESP_RST | 4        | GPIO9       | 4       | RST/NMI, through R1 1k, pull-up R2 47k            |
+| 2  | ESP_RXD | 12       | GPIO17 (RX) | 11      | P1.7 UCA0TXD / BSLTX, through R6 330R             |
+| 3  | ESP_TXD | 11       | GPIO16 (TX) | 12, 3   | P1.6 UCA0RXD / BSLRX **and** TEST, through R5 330R, TEST through JP3 |
+| 4  | ESP_RST | 4        | GPIO9       | 4       | RST/NMI, through R1 330R, pull-up R2 4k7          |
 | 5  | GND     | 5        | GND         | 6       | DVSS                                              |
 | 6  | +5V     | 2 (VSYS) | –           | –       | LDO U4 (ADC and bridge supply)                    |
 
@@ -73,16 +73,16 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 ```
                 J1                                           MSP430FR2111 (TSSOP-16)
 
-  3  ESP_TXD ──┬──[ R5 1k ]────┬──────┬──────┬────────────── 12  P1.6 / UCA0RXD / BSLRX
+  3  ESP_TXD ──┬──[ R5 330R ]──┬──────┬──────┬────────────── 12  P1.6 / UCA0RXD / BSLRX
                D4              │      │      └─ JP3 ─┬────── 3   TEST / SBWTCK
                                │      │              ├─[ R8 10k, not fitted ]─ GND
                                │      │              └─ J8-2
-                               │      └─[ R7 47k ]─ 3V3
+                               │      └─[ R7 4k7 ]─ 3V3
                              JP2 (open)
                                └──►|── D2 ──┐  (anode at JP2, cathode at TXD)
-  2  ESP_RXD ─────[ R6 1k ]─────────────────┴─────────────── 11  P1.7 / UCA0TXD / BSLTX
-  4  ESP_RST ──┬──[ R1 1k ]────┬──────────────────────────── 4   RST / NMI / SBWTDIO
-               D4              ├─[ R2 47k ]─ 3V3
+  2  ESP_RXD ─────[ R6 330R ]───────────────┴─────────────── 11  P1.7 / UCA0TXD / BSLTX
+  4  ESP_RST ──┬──[ R1 330R ]──┬──────────────────────────── 4   RST / NMI / SBWTDIO
+               D4              ├─[ R2 4k7 ]─ 3V3
                                └─ J8-1
   1  ESP_3V3 ── JP1 1-2 ── 3V3 ──┬────────────────────────── 5   DVCC
                           C1 4u7 + C2 100n
@@ -91,8 +91,12 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 
 - The BSL uses P1.6 (RX) and P1.7 (TX) (datasheet Table 9-4). These are also
   UCA0 RXD/TXD (USCIARMP = 0), so the app and the BSL use the same pins.
-- The 47k pull-up on RST also keeps GPIO9 high while the ESP boots (strap pin).
-- The 1k series resistor is a safeguard (see below). Fit 0 Ω instead if the bench test shows it isn't needed.
+- R2 also keeps GPIO9 high while the ESP boots (strap pin). If the module's 3V3 is off while the
+  ESP boots, R1/R2 and the MSP's input diode pull GPIO9 low instead (R2 alone: ~0.3 V) and the
+  ESP may enter download mode. Can't happen with JP1 1-2; with JP1 2-3 the module needs its 5 V
+  first or together with the ESP.
+- R1 is a safeguard (see below): RST low level 0.22 V.
+- The low pull-ups (R2, R7 4k7) and series resistors (330R) are for long wires.
 - No capacitor on the MSP RST pin: max 1.1 nF with Spy-Bi-Wire. The 100 nF on the
   keg20 side of R1 is fine.
 
@@ -113,7 +117,8 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 - J7 also powers the keg20 board through J1-6 (intended). With USB plugged in at the same time it
   may feed back into it, so leave J1-6 open or add a second Schottky there.
 - Without 5 V (JP1 1-2) the MCU runs but the ADC has no analog supply: the load cell data is invalid.
-- With only one of the two boards powered, current can leak through the UART and RST lines.
+- With only one of the two boards powered, current leaks through the UART and RST lines: up to ~8 mA
+  per push-pull line (330R), the MSP allows ±2 mA diode current. Power both together.
 
 ### ESD
 
@@ -132,16 +137,22 @@ As a standalone module only J1 3–6 are needed: **TXD, RST, GND, +5V**, with JP
 (1-2 cut) and JP2 closed.
 
 - The host pin on J1-3 must be **open-drain, never push-pull**: a push-pull high fights
-  MSP TXD through D2 (limited to ~3 mA by R5 1k). A USB-UART adapter may only listen
+  MSP TXD through D2 (~8 mA through R5 330R). A USB-UART adapter may only listen
   (its RX on J1-3, its TX not connected).
 - Keep TXD and RST at 3.3 V levels.
-- R7 holds TEST high at power-up, so the app may not start by itself: the host must reset
-  it (TXD low ≥ 100 µs, pulse RST low). Or cut JP3 and fit R8 if UART flashing isn't needed.
+- R7 holds TEST high at power-up and the app doesn't start by itself (seen on a G2553): the host must
+  reset it (TXD low ≥ 100 µs, pulse RST low). Or cut JP3 and fit R8 if UART flashing isn't needed.
 - The app only sends, so listening works with the firmware as it is.
-- The MSP also receives what it sends. The app ignores RX; the **BSL probably does not**,
-  so flash with two wires: JP2 open and J1-2 connected.
+- The MSP also receives what it sends. The app ignores RX. The BSL works over one wire on a
+  **G2553** (software UART, flash and verify ok); the FR2111 BSL uses the hardware UART, so it
+  may hear itself. Until that is tested, flash with two wires: JP2 open and J1-2 connected.
+- A host that also sends must not talk over the MSP's frames: send only between them.
 - TEST toggles with the MSP's own data as well (harmless while RST is high, see below).
-- R7 47k is enough for 9600 baud. Use 4k7–10k for a long cable or a higher rate.
+- R7 must be 4k7: TEST has an internal pull-down (20–50k) and with an open-drain host only R7
+  holds the line high. Calculated idle level: 2.67–2.91 V with 4k7 (a guaranteed high needs
+  ~2.5 V), only 1.0–1.4 V with 47k. Rise time ~3 µs with 300 pF, ~9 µs with 1 nF.
+- R5 330R keeps the low level at ~0.3 V (open-drain host) to 0.5 V (diode in the host's TX), limit 0.82 V.
+  1k would leave no margin.
 
 ### TEST on the RX line – why it works
 
@@ -158,12 +169,13 @@ the time and toggles with the UART data.
 - **To reset the MSP, take TEST low first.** While SBW is on, the RST pin is
   SBWTDIO and doesn't reset the chip. Drive TX low for **≥ 100 µs** (tSBW,Ret max)
   so SBW turns off, then pull RST low.
-- Each SBW cycle has a TDO slot in which the MSP may drive SBWTDIO. The **1k** limits
-  contention with the ESP's push-pull high. The ESP side is held by the 100 nF, so
+- Each SBW cycle has a TDO slot in which the MSP may drive SBWTDIO. **R1** limits
+  contention with the ESP's push-pull high (10 mA peak with 330R, 3 mA with 1k). The ESP side is held by the 100 nF, so
   the line is back at 1 for the next TMS slot.
 - R7 keeps TEST high when nothing is connected to J1-3.
-- At power-up with TEST high, the MSP may or may not start its app. It doesn't
-  matter: the ESP always takes over at boot with its own reset or BSL sequence.
+- At power-up with TEST high the MSP doesn't start its app without help (seen on a G2553, LED
+  only). In normal use it doesn't matter: the ESP always takes over at boot with its own reset or
+  BSL sequence (both need TEST low or the BSL entry pulses).
 - When the ESP resets, its ROM log toggles GPIO16. The MSP's RX and TEST see
   garbage; this is harmless because the app ignores RX.
 - SBW debugging (TI debugger) is possible only with the J1 link disconnected.
@@ -318,7 +330,7 @@ The ADC also needs 5 V on J1-6 or J7:
 |---------|-------------------------------------------|
 | TXD     | 3 (MSP P1.6 + TEST)                       |
 | RXD     | 2 (MSP P1.7)                              |
-| RTS     | 4 (RST, R1 1k is on the board); adapter without RTS: DTR and `--rst dtr` |
+| RTS     | 4 (RST, R1 330R is on the board); adapter without RTS: DTR and `--rst dtr` |
 | 3V3/GND | 1 / 5 (JP1 1-2; with JP1 2-3 leave 1 open) |
 
 - **Monitor:** `python3 sensor/fw/tools/decode.py /dev/ttyUSB0` (or
@@ -348,20 +360,20 @@ The ADC also needs 5 V on J1-6 or J7:
       `test_g2553/README.md`. Not shown for the FR2111, its TX pin is TDO
 - [ ] TCK/TMS (P1.4/P1.5) floating during the BSL can enter JTAG mode (SLAU319 1.3.1.1.1, flash
       devices): external pull-ups needed on the FR2111?
-
 - [ ] Exact FR2xx BSL entry timing (pulse widths, TEST high → RST high delay)
 - [ ] Wrong BSL password → mass erase on FR2111?
 - [ ] BSL CRC check command and maximum RX data block size on FR2111
 - [ ] App keeps running with TEST toggling (scope: no resets, no stalls), and the
       BSL keeps working with TEST high
-- [ ] Is the 1k on RST needed (look for contention in the TDO slot)?
+- [ ] Contention on RST in the TDO slot with R1 330R (the G2553 test passed with 1k and 47k/47k)
 - [ ] REFO / DCO accuracy for 9600 baud over the keg temperature range
 - [ ] Firmware: drive PDWN (P1.3), check the ADS1231 readout
 - [ ] Bridge common mode within 1.5–1.8 V, ADC noise with JP1 1-2 and 2-3
-- [ ] One-wire mode (JP2 closed): low level through D2, TEST toggling, does the BSL work?
+- [ ] One-wire mode (JP2 closed, R7 4k7, R5 330R): does the FR2111 BSL work over one wire? App and BSL
+      passed on a G2553 with a cable, see `test_g2553/README.md`. Line levels not measured
 - [ ] U4 stable with JP1 2-3 (8.1 µF in total), 5 V overshoot at plug-in below 6 V at U4
-- [ ] Standalone: does the app start at power-up with TEST high?
-- [ ] Spy-Bi-Wire over J8
+- [ ] FR2111: does it also need a reset after power-up with TEST high (as the G2553)?
+- [ ] Spy-Bi-Wire over J8 with R2 4k7 (TI's reference circuit: 47k)
 - [ ] Check the D3/D4 ratings in their datasheets before ordering
 - [ ] Check timing on the scope: 1-wire slots and the read sample point
 - [ ] Unplug each sensor and check the error frames (`h01`/`h02`, `t01`/`t02`)

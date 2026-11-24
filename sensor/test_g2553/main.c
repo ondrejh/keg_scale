@@ -28,6 +28,10 @@
 #define BLINK 50            /* x 10 ms per toggle */
 #endif
 
+#ifndef ONEWIRE             /* 1: TX (diode) and RX share one line, half duplex */
+#define ONEWIRE 0
+#endif
+
 #define LED     BIT0
 #define TXP     BIT1
 #define RXP     BIT5
@@ -105,6 +109,10 @@ __attribute__((interrupt(PORT1_VECTOR))) void port1(void)
     P1IFG &= ~RXP;
     if (P1IN & RXP)
         return;                             /* glitch */
+#if ONEWIRE
+    if (TA0CCTL0 & CCIE)
+        return;                             /* own transmission */
+#endif
     P1IE &= ~RXP;
     rxbits = 0;
     rxsh = 0;
@@ -204,8 +212,23 @@ static void hex4(unsigned v)
     hex2((uint8_t)v);
 }
 
+#if ONEWIRE
+/* Line free: own TX done, nothing being received, high for 2 ms (~2 characters). */
+static void wait_idle(void)
+{
+    unsigned t = TA0R;
+    while ((unsigned)(TA0R - t) < 20 * bitt) {
+        if (!(P1IN & RXP) || (TA0CCTL0 & CCIE) || (TA0CCTL1 & CCIE))
+            t = TA0R;
+    }
+}
+#endif
+
 static void begin(uint8_t type)
 {
+#if ONEWIRE
+    wait_idle();
+#endif
     crc = 0;
     fputch(type);
 }

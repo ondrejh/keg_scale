@@ -47,6 +47,7 @@ class Nak(BslError):
 
 class G2Bsl(Bsl):
     manual = False
+    onewire = False     # everything written is echoed
     synced = False      # sync already acknowledged, command frame expected next
 
     def rst(self, high):
@@ -55,10 +56,17 @@ class G2Bsl(Bsl):
         else:
             super().rst(high)
 
+    def put(self, data):
+        self.ser.write(data)
+        if self.onewire:
+            echo = self._read(len(data))
+            if echo != data:
+                raise BslError('echo %s, sent %s' % (echo.hex(' '), data.hex(' ')))
+
     def sync(self):
         time.sleep(0.002)               # >= 1.2 ms after the last received character
         self.ser.reset_input_buffer()
-        self.ser.write(bytes([SYNC]))
+        self.put(bytes([SYNC]))
         r = self._read(1)[0]
         if r != ACK:
             raise BslError('sync: got 0x%02X instead of 0x90' % r)
@@ -74,7 +82,7 @@ class G2Bsl(Bsl):
         if not self.synced:
             self.sync()
         self.synced = False
-        self.ser.write(pkt)
+        self.put(pkt)
         r = self._read(1)[0]
         if r == NAK:
             raise Nak('NAK to command 0x%02X' % cmd)
@@ -364,6 +372,7 @@ def main():
     ap.add_argument('--rst', choices=['rts', 'dtr', 'manual'], default='rts')
     ap.add_argument('--test', choices=['tx', 'dtr'], default='tx')
     ap.add_argument('--no-reset', action='store_true')
+    ap.add_argument('--onewire', action='store_true', help='TX and RX on one line')
     ap.add_argument('-v', '--verbose', action='store_true')
     a = ap.parse_args()
     if a.test == 'dtr' and a.rst == 'dtr':
@@ -378,7 +387,8 @@ def main():
     ser = open_port(a.port)
     bsl = G2Bsl(ser, a.test, verbose=a.verbose, rst='rts' if a.rst == 'rts' else 'dtr')
     bsl.manual = a.rst == 'manual'
-    link = Link(ser)
+    bsl.onewire = a.onewire
+    link = Link(ser, onewire=a.onewire)
     try:
         if a.action == 'reset':
             bsl.reset()
