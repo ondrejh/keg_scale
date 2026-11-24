@@ -48,8 +48,8 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 | J1 | net     | keg20 J1 | ESP32-C6    | MSP pin | function                                          |
 |----|---------|----------|-------------|---------|---------------------------------------------------|
 | 1  | ESP_3V3 | 6        | 3V3         | –       | board 3V3, through JP1 1-2                        |
-| 2  | ESP_RXD | 12       | GPIO17 (RX) | 11      | P1.7 UCA0TXD / BSLTX, through R6 100R             |
-| 3  | ESP_TXD | 11       | GPIO16 (TX) | 12, 3   | P1.6 UCA0RXD / BSLRX **and** TEST, through R5 100R |
+| 2  | ESP_RXD | 12       | GPIO17 (RX) | 11      | P1.7 UCA0TXD / BSLTX, through R6 1k               |
+| 3  | ESP_TXD | 11       | GPIO16 (TX) | 12, 3   | P1.6 UCA0RXD / BSLRX **and** TEST, through R5 1k, TEST through JP3 |
 | 4  | ESP_RST | 4        | GPIO9       | 4       | RST/NMI, through R1 1k, pull-up R2 47k            |
 | 5  | GND     | 5        | GND         | 6       | DVSS                                              |
 | 6  | +5V     | 2 (VSYS) | –           | –       | LDO U4 (ADC and bridge supply)                    |
@@ -59,6 +59,7 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 | J2        | 4-wire load cell: 1 E+, 2 S+, 3 S−, 4 E−, 5 GND (cable shield)   |
 | J3–J6     | four 3-wire half-bridge cells, alternative to J2                 |
 | J7        | external 5 V: 1 = +5 V, 2 = GND, through Schottky D1             |
+| J8        | Spy-Bi-Wire pogo pads, 2.54 mm: 1 RST, 2 TEST, 3 GND             |
 
 | jumper | position                | meaning                                              |
 |--------|-------------------------|------------------------------------------------------|
@@ -66,18 +67,23 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 |        | 2-3                     | 3V3 from U4, board runs from 5 V only. **Cut 1-2 first**, never bridge all three pads |
 | JP2    | open (default)          | two-wire UART                                        |
 |        | closed                  | one-wire UART on J1-3                                |
+| JP3    | bridged (default)       | TEST tied to MSP RX, needed for BSL entry over UART  |
+|        | cut                     | TEST separate, fit R8 (see [Programming pads](#programming-pads-fallback)) |
 
 ```
                 J1                                           MSP430FR2111 (TSSOP-16)
 
-  3  ESP_TXD ──┬──[ R5 100R ]──┬──────┬──────┬────────────── 12  P1.6 / UCA0RXD / BSLRX
-               D4              │      │      └────────────── 3   TEST / SBWTCK
+  3  ESP_TXD ──┬──[ R5 1k ]────┬──────┬──────┬────────────── 12  P1.6 / UCA0RXD / BSLRX
+               D4              │      │      └─ JP3 ─┬────── 3   TEST / SBWTCK
+                               │      │              ├─[ R8 10k, not fitted ]─ GND
+                               │      │              └─ J8-2
                                │      └─[ R7 47k ]─ 3V3
                              JP2 (open)
                                └──►|── D2 ──┐  (anode at JP2, cathode at TXD)
-  2  ESP_RXD ─────[ R6 100R ]───────────────┴─────────────── 11  P1.7 / UCA0TXD / BSLTX
+  2  ESP_RXD ─────[ R6 1k ]─────────────────┴─────────────── 11  P1.7 / UCA0TXD / BSLTX
   4  ESP_RST ──┬──[ R1 1k ]────┬──────────────────────────── 4   RST / NMI / SBWTDIO
-               D4              └─[ R2 47k ]─ 3V3
+               D4              ├─[ R2 47k ]─ 3V3
+                               └─ J8-1
   1  ESP_3V3 ── JP1 1-2 ── 3V3 ──┬────────────────────────── 5   DVCC
                           C1 4u7 + C2 100n
   5  GND ────────────────────────┴────────────────────────── 6   DVSS
@@ -93,17 +99,18 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 ### Power
 
 ```
-  J7-1 ──►|── D1 SS14 ──┬── +5V ──┬── U4 LP5907-3.3 ── +3.3VA ──┬── ADS1231 AVDD, VREFP, bridge E+
-  J1-6 (VSYS) ──────────┘         D3 TVS                        └── JP1 2-3 ─┐
-  J1-1 (keg20 3V3) ─────────────────────────────────────────────── JP1 1-2 ─┴── +3V3: MSP, ADS1231 DVDD, DS18B20
+  J7-1 ──►|── D1 SS14 ──┬── +5V ──┬──[ R9 10R ]── U4 LP5907-3.3 ── +3.3VA ──┬── ADS1231 AVDD, VREFP, bridge E+
+  J1-6 (VSYS) ──────────┘         D3 TVS                                    └── JP1 2-3 ─┐
+  J1-1 (keg20 3V3) ─────────────────────────────────────────────────────────── JP1 1-2 ─┴── +3V3: MSP, ADS1231 DVDD, DS18B20
 ```
 
 - U4 feeds the analog side only, so the ESP's 3V3 noise stays out of the measurement.
   With JP1 2-3 the MCU shares it; readings may be slightly noisier.
 - U4 input: 5.5 V max (6 V absolute max). D1 does not protect against overvoltage.
-- U4 output capacitance must stay **0.7–10 µF**: 2.1 µF now (C4 C5 C9), 8.0 µF with
-  JP1 2-3 (adds C1 C2 C3 C7).
-- J7 also powers the keg20 board through J1-6. With USB plugged in at the same time it
+- U4 output capacitance must stay **0.7–10 µF**: 2.2 µF now (C4 C5 C9 C11), 8.1 µF
+  with JP1 2-3 (adds C1 C2 C3 C7). C9: X7R, 10 V or higher.
+- R9 with C8 damps the ringing when a powered cable is plugged in.
+- J7 also powers the keg20 board through J1-6 (intended). With USB plugged in at the same time it
   may feed back into it, so leave J1-6 open or add a second Schottky there.
 - Without 5 V (JP1 1-2) the MCU runs but the ADC has no analog supply: the load cell data is invalid.
 - With only one of the two boards powered, current can leak through the UART and RST lines.
@@ -113,7 +120,8 @@ J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are
 D3 (SMF5V0A, on +5V) and D4 (SP0502BAHT, on ESP_TXD and ESP_RST) go right at J1 with a
 short path to GND. D3 clamps above U4's 6 V absolute maximum: it is for ESD and spikes,
 not for sustained overvoltage. ESP_RXD and the load cell inputs have no ESD parts.
-D1 covers reversed polarity on J7 only. Reversed 5 V on J1 shorts through D3.
+D1 covers reversed polarity on J7 only. Reversed 5 V on J1 shorts through D3, and a J1
+plug put in backwards puts 5 V on the 3V3 pin: use a keyed connector (decided at layout).
 
 ### One-wire UART and 4-wire standalone module
 
@@ -124,9 +132,11 @@ As a standalone module only J1 3–6 are needed: **TXD, RST, GND, +5V**, with JP
 (1-2 cut) and JP2 closed.
 
 - The host pin on J1-3 must be **open-drain, never push-pull**: a push-pull high fights
-  MSP TXD through D2 (up to ~30 mA with R5 100R). A USB-UART adapter may only listen
+  MSP TXD through D2 (limited to ~3 mA by R5 1k). A USB-UART adapter may only listen
   (its RX on J1-3, its TX not connected).
 - Keep TXD and RST at 3.3 V levels.
+- R7 holds TEST high at power-up, so the app may not start by itself: the host must reset
+  it (TXD low ≥ 100 µs, pulse RST low). Or cut JP3 and fit R8 if UART flashing isn't needed.
 - The app only sends, so listening works with the firmware as it is.
 - The MSP also receives what it sends. The app ignores RX; the **BSL probably does not**,
   so flash with two wires: JP2 open and J1-2 connected.
@@ -135,7 +145,7 @@ As a standalone module only J1 3–6 are needed: **TXD, RST, GND, +5V**, with JP
 
 ### TEST on the RX line – why it works
 
-TEST is tied to the ESP TX line, which idles high. It is therefore high most of
+TEST is tied to the ESP TX line (through JP3 and R5), which idles high. It is therefore high most of
 the time and toggles with the UART data.
 
 - TEST high only turns **Spy-Bi-Wire (SBW)** on: TEST becomes SBWTCK and RST
@@ -158,6 +168,18 @@ the time and toggles with the UART data.
   garbage; this is harmless because the app ignores RX.
 - SBW debugging (TI debugger) is possible only with the J1 link disconnected.
 
+### Programming pads (fallback)
+
+If the UART bootloader method doesn't work, program the MSP over Spy-Bi-Wire with pogo pins
+on **J8** (footprint `POGO_PADS_3` in `schematic/lib/keg01.pretty`).
+
+- Unplug J1: the host and the 100 nF on the keg20 RST line load the signals.
+- J8 has no supply pin. Power the board from J7 with JP1 on 2-3 and keep the programmer at 3.3 V.
+- JP2 must be open while JP3 is bridged, otherwise MSP TXD can pull TEST low through D2.
+- If TEST on the UART line is the problem, cut JP3 and fit R8 (10k to GND). R8 does nothing
+  useful while JP3 is bridged (R7 and the host hold the line high). R7 stays on MSP RX.
+  UART BSL entry doesn't work with JP3 cut, J8 is then the way to program the chip.
+
 ## Sensors on the MSP
 
 | sensor  | signal    | MSP pin    | note                                             |
@@ -168,7 +190,7 @@ the time and toggles with the UART data.
 | DS18B20 | DQ        | P1.2 (16)  | R4 4k7 pull-up to 3V3, VDD from 3V3 (non-parasitic) |
 | spare   |           | P2.0, P2.1, P2.6, P2.7 | future sensors, not routed to a connector |
 
-- Avoid P1.4/P1.5: they are 4-wire JTAG pins (TCK/TMS).
+- Avoid P1.4/P1.5: they are 4-wire JTAG pins (TCK/TMS). P1.6/P1.7 (BSL/UART) are TDI/TDO.
 - DS18B20: 12-bit conversion takes 750 ms. The other notes in `fw20/README.md` still apply.
 
 ### ADS1231
@@ -189,6 +211,9 @@ Datasheet SBAS414D.
 - E− returns through the ADS1231 switch (SW, max 30 mA). It is open in power-down and
   standby, so E− is not GND. VREFN is sensed at E−.
 - C6 100 nF C0G goes close to the CAP pins.
+- Input filter for J2 and J3–J6: R10/R11 100R in series with S+/S−, C10 100 nF C0G between
+  AINP and AINN (~8 kHz). Place it at U2 pins 7 and 8.
+- C11 100 nF between VREFP and VREFN, at U2 pins 10 and 9 (E− is not GND).
 
 ### Load cells
 
@@ -238,8 +263,9 @@ The MSP image is embedded in the fw20 image, so one `idf.py flash` updates both 
 
 1. **BSL entry** (GPIO9 and GPIO16 as plain GPIO):
    TX low and RST low (TX low ≥ 100 µs first) → TX high, low, high (two
-   rising edges on TEST) → RST high while TX is still high → TX low.
-   Hand GPIO16 back to the UART (9600 8E1).
+   rising edges on TEST) → RST high while TX is still high. **Leave TX high**: the BSL
+   receives any later low as data (seen on a G2553, it then ignores the sync).
+   Hand GPIO16 back to the UART (9600 8E1, idle high, no glitch).
 2. **Firmware check:** the BSL password is the 32-byte interrupt vector table
    (0xFFE0–0xFFFF). The ESP sends the vectors of its embedded image.
    - Password accepted → BSL *CRC check* (0x16) over the code area. If it
@@ -248,7 +274,8 @@ The MSP image is embedded in the fw20 image, so one `idf.py flash` updates both 
      the erased chip (32 × 0xFF), write the image with *RX data block* (0x10;
      ~800 B, about 1 s at 9600) and check the CRC.
 3. **Start the app:** TX low ≥ 100 µs, RST low → high (TEST low), wait for the
-   `V<xx>` line and start reading `H`/`T` lines.
+   `V<xx>` line and start reading `H`/`T` lines. Ignore junk in front of the first line:
+   the reset's TX low is data for the BSL (it sends a NAK) and TX glitches during reset.
 4. It can't brick the MSP: hardware BSL entry doesn't depend on the app, so an
    interrupted update just retries on the next boot.
 
@@ -291,7 +318,7 @@ The ADC also needs 5 V on J1-6 or J7:
 |---------|-------------------------------------------|
 | TXD     | 3 (MSP P1.6 + TEST)                       |
 | RXD     | 2 (MSP P1.7)                              |
-| RTS     | 4 (RST, R1 1k is on the board)            |
+| RTS     | 4 (RST, R1 1k is on the board); adapter without RTS: DTR and `--rst dtr` |
 | 3V3/GND | 1 / 5 (JP1 1-2; with JP1 2-3 leave 1 open) |
 
 - **Monitor:** `python3 sensor/fw/tools/decode.py /dev/ttyUSB0` (or
@@ -316,6 +343,12 @@ The ADC also needs 5 V on J1-6 or J7:
 
 ## Open points (verify on the bench / in SLAU610)
 
+- [ ] TEST high "enables the JTAG pins" (datasheet 9.7): do P1.6 (TDI) and P1.7 (TDO) still
+      work as UART then? The principle passed on a G2553 (P1.5 = TMS as RX), see
+      `test_g2553/README.md`. Not shown for the FR2111, its TX pin is TDO
+- [ ] TCK/TMS (P1.4/P1.5) floating during the BSL can enter JTAG mode (SLAU319 1.3.1.1.1, flash
+      devices): external pull-ups needed on the FR2111?
+
 - [ ] Exact FR2xx BSL entry timing (pulse widths, TEST high → RST high delay)
 - [ ] Wrong BSL password → mass erase on FR2111?
 - [ ] BSL CRC check command and maximum RX data block size on FR2111
@@ -326,7 +359,9 @@ The ADC also needs 5 V on J1-6 or J7:
 - [ ] Firmware: drive PDWN (P1.3), check the ADS1231 readout
 - [ ] Bridge common mode within 1.5–1.8 V, ADC noise with JP1 1-2 and 2-3
 - [ ] One-wire mode (JP2 closed): low level through D2, TEST toggling, does the BSL work?
-- [ ] U4 stable with JP1 2-3 (8 µF in total)
+- [ ] U4 stable with JP1 2-3 (8.1 µF in total), 5 V overshoot at plug-in below 6 V at U4
+- [ ] Standalone: does the app start at power-up with TEST high?
+- [ ] Spy-Bi-Wire over J8
 - [ ] Check the D3/D4 ratings in their datasheets before ordering
 - [ ] Check timing on the scope: 1-wire slots and the read sample point
 - [ ] Unplug each sensor and check the error frames (`h01`/`h02`, `t01`/`t02`)

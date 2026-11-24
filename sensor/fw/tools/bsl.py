@@ -9,6 +9,7 @@
 Wiring (3.3 V USB-UART, see ../../README.md):
     TXD -> P1.6 (BSLRX) and TEST      RXD <- P1.7 (BSLTX)
     RTS -> RST (through 1k)           3V3/GND -> DVCC/DVSS
+    (adapter without RTS: DTR -> RST, --rst dtr)
 
 TEST is tied to TX, so the entry pulses on TEST are made with a UART break
 (break = TX low). With --test dtr, TEST is driven from DTR instead. The RTS/DTR
@@ -73,17 +74,23 @@ def addr3(a):
 
 
 class Bsl:
-    def __init__(self, ser, test='tx', invert_test=False, invert_reset=False, verbose=False):
+    def __init__(self, ser, test='tx', invert_test=False, invert_reset=False, verbose=False,
+                 rst='rts'):
         self.ser = ser
         self.test_pin = test
         self.invert_test = invert_test
         self.invert_reset = invert_reset
         self.verbose = verbose
+        self.rst_pin = rst
 
     # -- control lines --
 
     def rst(self, high):
-        self.ser.rts = (not high) ^ self.invert_reset
+        level = (not high) ^ self.invert_reset
+        if self.rst_pin == 'dtr':
+            self.ser.dtr = level
+        else:
+            self.ser.rts = level
 
     def test(self, high):
         if self.test_pin == 'tx':
@@ -100,7 +107,9 @@ class Bsl:
 
     def enter(self):
         """Hardware BSL entry: two rising edges on TEST while RST is low,
-        RST rises while TEST is high, then TEST low."""
+        RST rises while TEST is high, then TEST low (only if TEST is a separate line).
+        With TEST tied to TX it must stay high: the running BSL would receive the low
+        as data (seen on a G2553: garbled sync, no answer)."""
         self.test(False)
         time.sleep(0.01)    # TEST low >= 100 us: Spy-Bi-Wire off, RST is reset again
         self.rst(False)
@@ -113,8 +122,9 @@ class Bsl:
         time.sleep(0.005)
         self.rst(True)
         time.sleep(0.005)
-        self.test(False)
-        time.sleep(0.005)
+        if self.test_pin != 'tx':
+            self.test(False)
+            time.sleep(0.005)
         self.release_test()
         time.sleep(0.05)    # BSL start-up
         self.ser.reset_input_buffer()   # drop application frames sent before the reset
@@ -435,16 +445,21 @@ def main():
     ap.add_argument('--no-reset', action='store_true', help='stay in the BSL after flashing')
     ap.add_argument('--test', choices=['tx', 'dtr'], default='tx',
                     help='TEST driven by TX via break (default) or by DTR')
+    ap.add_argument('--rst', choices=['rts', 'dtr'], default='rts',
+                    help='RST driven by RTS (default) or by DTR')
     ap.add_argument('--invert-test', action='store_true')
     ap.add_argument('--invert-reset', action='store_true')
     ap.add_argument('-v', '--verbose', action='store_true', help='dump BSL packets')
     args = ap.parse_args()
     if args.action == 'flash' and not args.image:
         ap.error('flash needs an image file')
+    if args.rst == 'dtr' and args.test == 'dtr':
+        ap.error('DTR cannot drive both RST and TEST')
 
     mem = load_image(args.image) if args.action == 'flash' else None
     ser = open_port(args.port)
-    bsl = Bsl(ser, args.test, args.invert_test, args.invert_reset, args.verbose)
+    bsl = Bsl(ser, args.test, args.invert_test, args.invert_reset, args.verbose,
+              args.rst)
     try:
         if args.action == 'flash':
             flash(bsl, mem, args.force)
