@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "keg01") (type "KiCad") (uri "${KIPRJMOD}/../../lib/keg01.pretty") (options "") (descr "solder pads for load cells (splitter)"))
+)

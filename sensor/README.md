@@ -1,11 +1,17 @@
-# keg20 sensor bridge (MSP430FR2100)
+# keg20 sensor bridge (MSP430FR2111 + ADS1231 + DS18B20)
 
 Small MCU between the keg20 display board (ESP32-C6, header J1) and the sensors.
-It reads the sensors (HX711 load cell and DS18B20 now, more later) and sends **raw
-data** over the UART. The ESP does the rest: CRC checks, filtering, calibration
-and conversion to units.
+It reads the sensors (load cell through an ADS1231, DS18B20, more later) and sends
+**raw data** over the UART. The ESP does the rest: CRC checks, filtering,
+calibration and conversion to units.
 
-Status: firmware written (`sensor/fw/`), builds, **not tested on hardware yet**.
+Schematic: `schematic/keg20/sensor/` (KiCad 10). Reference designators below are from it.
+
+Status:
+
+- Schematic drawn, ERC clean. No PCB yet, nothing tested on hardware.
+- Firmware (`sensor/fw/`) builds, but it is still written for the **HX711**. With the
+  ADS1231 it **must drive PDWN (P1.3) high**, see [ADS1231](#ads1231).
 
 ## Why
 
@@ -21,46 +27,111 @@ same UART, so the ESP can check and reflash the MSP firmware with no programmer.
 
 ## MCU
 
-**MSP430FR2100**, TSSOP-16 (PW), datasheet SLASE78E. The pinout is the same for the whole family.
+**MSP430FR2111** (U1), TSSOP-16 (PW), datasheet SLASE78E. The pinout is the same for the
+whole family, so an FR2100 also fits the board.
 
 | part         | FRAM    | code space (linker) | RAM   | note                          |
 |--------------|---------|---------------------|-------|-------------------------------|
 | MSP430FR2000 | 0.5 KB  | 384 B               | 512 B | **too small**: firmware is ~800 B in C |
-| MSP430FR2100 | 1 KB    | 896 B               | 512 B | default build, ~90 B left     |
-| MSP430FR2111 | 3.75 KB | 3.6 KB              | 1 KB  | room for more sensors         |
+| MSP430FR2100 | 1 KB    | 896 B               | 512 B | default `make`, ~90 B left    |
+| MSP430FR2111 | 3.75 KB | 3.6 KB              | 1 KB  | **on the schematic**, room for more sensors |
 
 The FR2000 could only be used with the firmware rewritten in assembly, and even then it would be tight.
 
 Toolchain: TI MSP430-GCC 9.3 (`/usr/lib/gcc/msp430/bin/msp430-elf-gcc`, includes
 the device headers and `.ld` files). The system `msp430-gcc` 4.6 (mspgcc) is too old for the FR2xxx parts.
 
-## Wiring to J1
+## Connectors and jumpers
+
+J1 connects to the keg20 board header J1 (`fw20/README.md`). The pin numbers are **not** the same:
+
+| J1 | net     | keg20 J1 | ESP32-C6    | MSP pin | function                                          |
+|----|---------|----------|-------------|---------|---------------------------------------------------|
+| 1  | ESP_3V3 | 6        | 3V3         | –       | board 3V3, through JP1 1-2                        |
+| 2  | ESP_RXD | 12       | GPIO17 (RX) | 11      | P1.7 UCA0TXD / BSLTX, through R6 100R             |
+| 3  | ESP_TXD | 11       | GPIO16 (TX) | 12, 3   | P1.6 UCA0RXD / BSLRX **and** TEST, through R5 100R |
+| 4  | ESP_RST | 4        | GPIO9       | 4       | RST/NMI, through R1 1k, pull-up R2 47k            |
+| 5  | GND     | 5        | GND         | 6       | DVSS                                              |
+| 6  | +5V     | 2 (VSYS) | –           | –       | LDO U4 (ADC and bridge supply)                    |
+
+| connector | use                                                              |
+|-----------|------------------------------------------------------------------|
+| J2        | 4-wire load cell: 1 E+, 2 S+, 3 S−, 4 E−, 5 GND (cable shield)   |
+| J3–J6     | four 3-wire half-bridge cells, alternative to J2                 |
+| J7        | external 5 V: 1 = +5 V, 2 = GND, through Schottky D1             |
+
+| jumper | position                | meaning                                              |
+|--------|-------------------------|------------------------------------------------------|
+| JP1    | 1-2 (default, bridged)  | 3V3 from keg20 (J1-1)                                |
+|        | 2-3                     | 3V3 from U4, board runs from 5 V only. **Cut 1-2 first**, never bridge all three pads |
+| JP2    | open (default)          | two-wire UART                                        |
+|        | closed                  | one-wire UART on J1-3                                |
 
 ```
-                 J1 (ESP32-C6 board)                     MSP430FR2100 (TSSOP-16)
+                J1                                           MSP430FR2111 (TSSOP-16)
 
-  J1-11  ESP_TXD  GPIO16 ──────────────────┬──────────── 12  P1.6 / UCA0RXD / BSLRX
-                                           └──────────── 3   TEST / SBWTCK
-  J1-12  ESP_RXD  GPIO17 ─────────────────────────────── 11  P1.7 / UCA0TXD / BSLTX
-  J1-4   GPIO9 (100nF on board) ──[ 1k ]──┬──────────── 4   RST / NMI / SBWTDIO
-                                          └─[ 47k ]─ 3V3
-  J1-6   3V3 ─────────────────────────────┬──────────── 5   DVCC
-                                     100nF + 1uF
-  J1-5   GND ─────────────────────────────┴──────────── 6   DVSS
+  3  ESP_TXD ──┬──[ R5 100R ]──┬──────┬──────┬────────────── 12  P1.6 / UCA0RXD / BSLRX
+               D4              │      │      └────────────── 3   TEST / SBWTCK
+                               │      └─[ R7 47k ]─ 3V3
+                             JP2 (open)
+                               └──►|── D2 ──┐  (anode at JP2, cathode at TXD)
+  2  ESP_RXD ─────[ R6 100R ]───────────────┴─────────────── 11  P1.7 / UCA0TXD / BSLTX
+  4  ESP_RST ──┬──[ R1 1k ]────┬──────────────────────────── 4   RST / NMI / SBWTDIO
+               D4              └─[ R2 47k ]─ 3V3
+  1  ESP_3V3 ── JP1 1-2 ── 3V3 ──┬────────────────────────── 5   DVCC
+                          C1 4u7 + C2 100n
+  5  GND ────────────────────────┴────────────────────────── 6   DVSS
 ```
-
-| J1 | ESP32-C6       | MSP pin | MSP function                      |
-|----|----------------|---------|-----------------------------------|
-| 11 | GPIO16 (TX)    | 12, 3   | P1.6 UCA0RXD / BSLRX, **and** TEST |
-| 12 | GPIO17 (RX)    | 11      | P1.7 UCA0TXD / BSLTX              |
-| 4  | GPIO9          | 4       | RST/NMI (through 1k, 47k pull-up) |
-| 6  | 3V3            | 5       | DVCC                              |
-| 5  | GND            | 6       | DVSS                              |
 
 - The BSL uses P1.6 (RX) and P1.7 (TX) (datasheet Table 9-4). These are also
   UCA0 RXD/TXD (USCIARMP = 0), so the app and the BSL use the same pins.
 - The 47k pull-up on RST also keeps GPIO9 high while the ESP boots (strap pin).
 - The 1k series resistor is a safeguard (see below). Fit 0 Ω instead if the bench test shows it isn't needed.
+- No capacitor on the MSP RST pin: max 1.1 nF with Spy-Bi-Wire. The 100 nF on the
+  keg20 side of R1 is fine.
+
+### Power
+
+```
+  J7-1 ──►|── D1 SS14 ──┬── +5V ──┬── U4 LP5907-3.3 ── +3.3VA ──┬── ADS1231 AVDD, VREFP, bridge E+
+  J1-6 (VSYS) ──────────┘         D3 TVS                        └── JP1 2-3 ─┐
+  J1-1 (keg20 3V3) ─────────────────────────────────────────────── JP1 1-2 ─┴── +3V3: MSP, ADS1231 DVDD, DS18B20
+```
+
+- U4 feeds the analog side only, so the ESP's 3V3 noise stays out of the measurement.
+  With JP1 2-3 the MCU shares it; readings may be slightly noisier.
+- U4 input: 5.5 V max (6 V absolute max). D1 does not protect against overvoltage.
+- U4 output capacitance must stay **0.7–10 µF**: 2.1 µF now (C4 C5 C9), 8.0 µF with
+  JP1 2-3 (adds C1 C2 C3 C7).
+- J7 also powers the keg20 board through J1-6. With USB plugged in at the same time it
+  may feed back into it, so leave J1-6 open or add a second Schottky there.
+- Without 5 V (JP1 1-2) the MCU runs but the ADC has no analog supply: the load cell data is invalid.
+- With only one of the two boards powered, current can leak through the UART and RST lines.
+
+### ESD
+
+D3 (SMF5V0A, on +5V) and D4 (SP0502BAHT, on ESP_TXD and ESP_RST) go right at J1 with a
+short path to GND. D3 clamps above U4's 6 V absolute maximum: it is for ESD and spikes,
+not for sustained overvoltage. ESP_RXD and the load cell inputs have no ESD parts.
+D1 covers reversed polarity on J7 only. Reversed 5 V on J1 shorts through D3.
+
+### One-wire UART and 4-wire standalone module
+
+JP2 closed: MSP TXD pulls J1-3 low through D2, R7 pulls it high. Both directions
+share J1-3 and J1-2 can stay unconnected.
+
+As a standalone module only J1 3–6 are needed: **TXD, RST, GND, +5V**, with JP1 on 2-3
+(1-2 cut) and JP2 closed.
+
+- The host pin on J1-3 must be **open-drain, never push-pull**: a push-pull high fights
+  MSP TXD through D2 (up to ~30 mA with R5 100R). A USB-UART adapter may only listen
+  (its RX on J1-3, its TX not connected).
+- Keep TXD and RST at 3.3 V levels.
+- The app only sends, so listening works with the firmware as it is.
+- The MSP also receives what it sends. The app ignores RX; the **BSL probably does not**,
+  so flash with two wires: JP2 open and J1-2 connected.
+- TEST toggles with the MSP's own data as well (harmless while RST is high, see below).
+- R7 47k is enough for 9600 baud. Use 4k7–10k for a long cable or a higher rate.
 
 ### TEST on the RX line – why it works
 
@@ -80,6 +151,7 @@ the time and toggles with the UART data.
 - Each SBW cycle has a TDO slot in which the MSP may drive SBWTDIO. The **1k** limits
   contention with the ESP's push-pull high. The ESP side is held by the 100 nF, so
   the line is back at 1 for the next TMS slot.
+- R7 keeps TEST high when nothing is connected to J1-3.
 - At power-up with TEST high, the MSP may or may not start its app. It doesn't
   matter: the ESP always takes over at boot with its own reset or BSL sequence.
 - When the ESP resets, its ROM log toggles GPIO16. The MSP's RX and TEST see
@@ -88,18 +160,53 @@ the time and toggles with the UART data.
 
 ## Sensors on the MSP
 
-| sensor  | signal | MSP pin    | note                                         |
-|---------|--------|------------|----------------------------------------------|
-| HX711   | SCK    | P1.1 (1)   | push-pull output                              |
-| HX711   | DOUT   | P1.0 (2)   | HX711 on 5 V → 10k series + 20k to GND divider |
-| DS18B20 | DQ     | P1.2 (16)  | 4k7 pull-up to 3V3, VDD from 3V3 (non-parasitic) |
-| spare   |        | P1.3, P2.0, P2.1, P2.6, P2.7 | future sensors          |
+| sensor  | signal    | MSP pin    | note                                             |
+|---------|-----------|------------|--------------------------------------------------|
+| ADS1231 | SCLK      | P1.1 (1)   | push-pull output                                 |
+| ADS1231 | DRDY/DOUT | P1.0 (2)   | DVDD = 3V3, no level shifting                    |
+| ADS1231 | PDWN      | P1.3 (15)  | push-pull output, R3 100k pull-down              |
+| DS18B20 | DQ        | P1.2 (16)  | R4 4k7 pull-up to 3V3, VDD from 3V3 (non-parasitic) |
+| spare   |           | P2.0, P2.1, P2.6, P2.7 | future sensors, not routed to a connector |
 
 - Avoid P1.4/P1.5: they are 4-wire JTAG pins (TCK/TMS).
-- The 3.3 V SCK into a 5 V HX711 is still marginal (HX711 VIH = 3.5 V at 5 V).
-  If readings glitch, add a 74AHCT1G125 buffer, or power the HX711 from 3.3 V.
-- The other HX711 and DS18B20 notes in `fw20/README.md` still apply: 10 SPS, gain 128,
-  SCK high < 50 µs, 12-bit conversion takes 750 ms.
+- DS18B20: 12-bit conversion takes 750 ms. The other notes in `fw20/README.md` still apply.
+
+### ADS1231
+
+Datasheet SBAS414D.
+
+- SPEED is tied low (10 SPS), CLKIN is tied low (internal oscillator), gain is fixed at 128.
+- **PDWN:** hold low for ≥ 10 ms after power-up, then high. R3 keeps the ADC off while the
+  MSP is in reset or in the BSL. The current firmware drives P1.3 low as an unused pin, so
+  the ADC **never starts**. This is the one change it needs.
+- The readout is compatible with the HX711 code: 24 bits MSB first, two's complement, and the
+  25th pulse forces DOUT high. The HX711 50/60 µs SCK limits don't apply: holding SCLK high
+  (at 10 SPS for ~100 ms) only enters standby.
+- First valid data ~400 ms after wake-up.
+- The reference is ratiometric: VREF = AVDD = E+. Full scale is ±0.5 × 3.3 V / 128 = ±12.9 mV.
+- The input common mode must stay within 1.5 V to AVDD − 1.5 V = **1.5–1.8 V**. A balanced
+  bridge sits at 1.65 V; check it with the real cells.
+- E− returns through the ADS1231 switch (SW, max 30 mA). It is open in power-down and
+  standby, so E− is not GND. VREFN is sensed at E−.
+- C6 100 nF C0G goes close to the CAP pins.
+
+### Load cells
+
+**J2** takes a 4-wire full bridge. Pin 5 (GND) is for the cable shield: connect it at this end
+only. If the shield is joined to a cell body that is grounded elsewhere, leave it open.
+Cells with 6 wires have two sense wires: join SEN+ to E+ and SEN− to E−, never to GND.
+
+**J3–J6** take four 3-wire half-bridge cells (same wiring and pads as `schematic/splitter`, P1–P4):
+
+| connector | splitter | red wire | pin 1 / 2 / 3         |
+|-----------|----------|----------|-----------------------|
+| J3        | P1       | E+       | black / red / white   |
+| J4        | P2       | S−       | white / red / black   |
+| J5        | P3       | E−       | black / red / white   |
+| J6        | P4       | S+       | white / red / black   |
+
+White wires join J3–J4 and J5–J6, black wires join J4–J5 and J6–J3. Use J2 **or** J3–J6,
+never both. If the reading falls with load, swap S+ and S− (or invert it in software).
 
 ## Protocol (MSP → ESP)
 
@@ -113,8 +220,8 @@ uppercase hex digits. The same CRC function checks the DS18B20 scratchpad on the
 | frame         | when                          | content                                        |
 |---------------|-------------------------------|------------------------------------------------|
 | `V<2 hex>*cc` | once after reset              | firmware version                               |
-| `H<6 hex>*cc` | each HX711 conversion (~10/s) | channel A raw value, 24-bit two's complement, MSB first |
-| `h<2 hex>*cc` | instead of `H`                | HX711 error: `01` not ready for 500 ms (missing), `02` DOUT still low after the 25th pulse (unpowered: the divider holds DOUT low) |
+| `H<6 hex>*cc` | each ADC conversion (~10/s)   | load cell raw value, 24-bit two's complement, MSB first |
+| `h<2 hex>*cc` | instead of `H`                | ADC error: `01` not ready for 500 ms (missing or powered down), `02` DOUT still low after the 25th pulse (unpowered) |
 | `T<4 hex>*cc` | ~1/s                          | DS18B20 raw temperature, int16, 1/16 °C (scratchpad CRC already checked) |
 | `t<2 hex>*cc` | instead of `T`                | DS18B20 error: `01` bus stuck low, `02` no presence pulse, `03` scratchpad CRC error |
 
@@ -152,11 +259,12 @@ The BSL answers with an ACK byte (0x00), then a `0x80 …` response frame.
 
 ```bash
 cd sensor/fw
-make                        # MSP430FR2100 (default): build/sensor.elf .hex .bin .lst, prints the size
-make MCU=msp430fr2111       # other part of the family
+make MCU=msp430fr2111       # MSP430FR2111 (schematic): build/sensor.elf .hex .bin .lst, prints the size
+make                        # MSP430FR2100 (Makefile default); run make clean when switching
 python3 tools/decode.py --selftest
 ```
 
+- Written for the HX711; the ADS1231 needs PDWN (P1.3), see above.
 - `main.c`: a single superloop with no interrupts. The watchdog runs at 1 s (ACLK = REFO).
   The DCO runs at 8 MHz with the FLL locked to REFO. UCA0 runs 9600 8E1 on P1.6/P1.7.
 - Main loop tick is about 10 ms:
@@ -176,19 +284,21 @@ python3 tools/decode.py --selftest
 
 ## Standalone test
 
-Use a 3.3 V USB-UART adapter (FTDI/CP2102) instead of the ESP:
+Use a 3.3 V USB-UART adapter (FTDI/CP2102) instead of the ESP, with two wires (**JP2 open**).
+The ADC also needs 5 V on J1-6 or J7:
 
-| adapter | MSP                    |
-|---------|------------------------|
-| TXD     | P1.6 + TEST (pin 12, 3) |
-| RXD     | P1.7 (pin 11)           |
-| RTS     | RST through 1k (pin 4)  |
-| 3V3/GND | DVCC/DVSS               |
+| adapter | J1                                        |
+|---------|-------------------------------------------|
+| TXD     | 3 (MSP P1.6 + TEST)                       |
+| RXD     | 2 (MSP P1.7)                              |
+| RTS     | 4 (RST, R1 1k is on the board)            |
+| 3V3/GND | 1 / 5 (JP1 1-2; with JP1 2-3 leave 1 open) |
 
 - **Monitor:** `python3 sensor/fw/tools/decode.py /dev/ttyUSB0` (or
   `picocom -b 9600 -y e /dev/ttyUSB0`). Expect `V01`, then `H…` frames at ~10/s
   and `T…` at ~1/s. Load the cell and warm the sensor;
-  the values should react.
+  the values should react. Until the firmware drives PDWN, expect `h…` errors or no valid
+  `H…` data.
 - **Flash:** `python3 sensor/fw/tools/bsl.py flash /dev/ttyUSB0 sensor/fw/build/sensor.hex`
   (pyserial).
   - It drives RST from RTS and makes the TEST pulses on TX with a UART break
@@ -207,11 +317,16 @@ Use a 3.3 V USB-UART adapter (FTDI/CP2102) instead of the ESP:
 ## Open points (verify on the bench / in SLAU610)
 
 - [ ] Exact FR2xx BSL entry timing (pulse widths, TEST high → RST high delay)
-- [ ] Wrong BSL password → mass erase on FR2100?
-- [ ] BSL CRC check command and maximum RX data block size on FR2100
+- [ ] Wrong BSL password → mass erase on FR2111?
+- [ ] BSL CRC check command and maximum RX data block size on FR2111
 - [ ] App keeps running with TEST toggling (scope: no resets, no stalls), and the
       BSL keeps working with TEST high
 - [ ] Is the 1k on RST needed (look for contention in the TDO slot)?
 - [ ] REFO / DCO accuracy for 9600 baud over the keg temperature range
-- [ ] Check timing on the scope: HX711 SCK high < 50 µs, 1-wire slots and the read sample point
+- [ ] Firmware: drive PDWN (P1.3), check the ADS1231 readout
+- [ ] Bridge common mode within 1.5–1.8 V, ADC noise with JP1 1-2 and 2-3
+- [ ] One-wire mode (JP2 closed): low level through D2, TEST toggling, does the BSL work?
+- [ ] U4 stable with JP1 2-3 (8 µF in total)
+- [ ] Check the D3/D4 ratings in their datasheets before ordering
+- [ ] Check timing on the scope: 1-wire slots and the read sample point
 - [ ] Unplug each sensor and check the error frames (`h01`/`h02`, `t01`/`t02`)
