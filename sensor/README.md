@@ -1,3 +1,8 @@
+# ToDo
+
+- [ ] wire MSP430FR2311 and test do BSL tests (2/3 wire)
+  - test_fr2311 folder
+
 # keg20 sensor bridge (MSP430FR2111 + ADS1231 + DS18B20)
 
 Small MCU between the keg20 display board (ESP32-C6, header J1) and the sensors.
