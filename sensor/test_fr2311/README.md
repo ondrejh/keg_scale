@@ -4,7 +4,9 @@ Second step after [test_g2553](../test_g2553/README.md). The MSP-EXP430FR2311 ha
 pins as the sensor board's FR2111 and they are the same JTAG pins: **P1.6 = RX = TDI, P1.7 = TX =
 TDO**. Its hardware UART and the BSL packets (SLAU550) are the ones of `../fw` too.
 
-**Result: not tested yet.**
+**Result: passed with 3 wires and with 2 wires** (power-up not tested). Two things the G2553 didn't
+show: the BSL needs a TEST low after RST rises, and over one wire a break after each BSL reply.
+See [Results](#results-2026-11-25-ch340).
 
 ## FR2311 and FR2111
 
@@ -15,14 +17,22 @@ TDO**. Its hardware UART and the BSL packets (SLAU550) are the ones of `../fw` t
 | Wrong password erases everything | yes | yes |
 | Blank chip starts the BSL by itself | **yes** | no |
 | BSL goes to sleep after 10 s without communication | yes | not listed |
+| BSL starts only after a TEST low following the RST rise (measured) | **yes** | not known |
 | BSL pins, TEST pull-down 20–50k, SBW timing | same | same |
 
 - `bsl_fr.py` flashes with password, write and read back only, what both chips have. Entry, reset and
   packets come from `../fw/tools/bsl.py`. **`bsl.py flash` itself still uses Mass Erase and CRC
   Check and can't work on the FR2111.**
+- **Entry:** after RST rises, TEST must go low once (any time, >= 1 ms tried) and high again. The
+  G2553 needs the opposite: TEST must stay high. `bsl_fr.py` adds the low; `enter()` in
+  `../fw/tools/bsl.py` leaves it out since the G2553 test, so its **first packet is lost** here.
 - A blank FR2311 makes a failed entry look like success, so `loop` checks before every entry
   that the app is running.
 - A pass doesn't prove the FR2111's own BSL ROM.
+
+- **One wire:** the BSL hears its own reply (hardware UART). The reply itself arrives intact, then the
+  BSL answers its echo with 51h, hears that too, and floods the line for ever. A break of >= 3 ms
+  after each reply stops it: `--onewire` sends 10 ms (`--quench MS`). The app isn't concerned.
 
 ## LaunchPad
 
@@ -32,6 +42,10 @@ TDO**. Its hardware UART and the BSL packets (SLAU550) are the ones of `../fw` t
 - **Adapter 3V3 not connected**, only GND and signals. Adapter set to 3.3 V levels.
 - Plug in the LaunchPad first and unplug it last, otherwise the adapter feeds the chip through
   its inputs.
+
+In the pictures (as tested) it was different: no cable in the LaunchPad's USB, so the chip runs from the
+adapter's 3V3 (red wire; then the 3V3 jumper stays off), and J7–J9 are still fitted, so P1.4 (TCK) is at GND
+through J9. It works that way too.
 
 All signals are on the target side of J101 (the pins towards the MCU, even numbers), or on J1/J2:
 
@@ -50,6 +64,8 @@ Resistor names and values below are those of the sensor board.
 ## Schematic, 3 wires (TX, RX, RST)
 
 Plus GND. Firmware `v1` / `v2`. Sensor board: JP2 open, JP3 bridged.
+
+![LaunchPad, adapter connected directly, 3 wires](testpad_direct.jpg)
 
 ```
  USB-UART adapter                                         MSP-EXP430FR2311
@@ -80,6 +96,8 @@ Plus GND. Firmware `v1` / `v2`. Sensor board: JP2 open, JP3 bridged.
 
 Plus GND. Firmware `ow`, tools with `--onewire`. Sensor board: JP2 closed, JP3 bridged, and an
 open-drain host, here the adapter's push-pull TX behind a diode.
+
+![LaunchPad, 2 wires (half duplex) over a cable](testpad_cable_halfduplex.jpg)
 
 ```
  USB-UART adapter                                         MSP-EXP430FR2311
@@ -134,9 +152,9 @@ toggles with every good command.
 
 | # | command | pass |
 |---|---------|------|
-| 1 | `bsl_fr.py PORT probe` (changes nothing) | "TEST stays high" 10/10 |
+| 1 | `bsl_fr.py PORT probe` (changes nothing) | "TEST low" variants 10/10 |
 | 2 | `bsl_fr.py PORT flash build/v1.hex --first` (**erases the demo**) | erased blank, verify ok, boot frame, red LED blinks |
-| 3 | `bsl_fr.py PORT probe` again, now with a known program | 10/10; which of the TEST low variants work? |
+| 3 | `bsl_fr.py PORT probe` again, now with a known program | "TEST low" variants 10/10 |
 | 4 | `host_fr.py PORT stress 1000`, then `cmd S` | no errors, no resets |
 | 5 | `bsl_fr.py PORT flash build/v2.hex --old build/v1.hex`, then `stress 200` | version 2, fast blink |
 | 6 | `bsl_fr.py PORT loop 100 build/v2.hex` | 0 failures, no stray bytes |
@@ -149,7 +167,7 @@ Then flash `ow.hex` (`--old build/v2.hex`) and rewire to 2 wires:
 
 | # | command | pass |
 |---|---------|------|
-| 11 | `bsl_fr.py PORT probe --onewire` | "TEST stays high" 10/10: does the hardware UART BSL mind its own echo? |
+| 11 | `bsl_fr.py PORT probe --onewire` | "TEST low" variants 10/10: the BSL works on one line |
 | 12 | `host_fr.py PORT stress 1000 --onewire`, then `cmd S --onewire` | no errors, own echo wrong 0 |
 | 13 | `bsl_fr.py PORT loop 100 build/ow.hex --onewire` | 0 failures, no stray bytes |
 | 14 | `bsl_fr.py PORT flash build/ow.hex --force --onewire` | erase, write, verify over one line |
@@ -160,3 +178,41 @@ Then flash `ow.hex` (`--old build/v2.hex`) and rewire to 2 wires:
 - If step 1 or 3 is unreliable: P1.4 (J1-2) and P1.5 (J1-6) to 3V3 with 47k each. SLAU550 recommends
   it (TCK/TMS must not float), with 1 nF to GND each. Start without: the sensor board has none.
 - `--rst dtr`: RST on DTR instead of RTS. `-v`: packet dump.
+
+## Results (2026-11-25, CH340)
+
+3 wires:
+
+| # | result |
+|---|--------|
+| 1 | TEST low after RST: 4/4 each with 1, 5, 50 ms. TEST stays high: 0/4. Further (5 times each): low of 5 ms 5, 50 or 500 ms after RST, and 200 ms: all 5/5. Without the low the first packet is lost, packets 2-4 work 5/5 |
+| 2 | pass: TI demo erased by a wrong password, F100-FFFF blank, same BSL session goes on, verify ok, app starts |
+| 3 | as step 1, 10/10 with low, 0/10 without (known app in the chip) |
+| 4 | pass: 1000 pings, 0 lost/wrong, 0 resets, no UART errors |
+| 5 | pass: old password accepted, erased, v2 verified, 200 pings ok |
+| 6 | pass: loop 100/100, no stray BSL bytes, no junk in front of boot frames |
+| 7 | pass, 3x each: RST pulse ignored with TEST high, resets with TEST low. Break 0.2 s and 2 s: no reset |
+| 8 | pass: back from the watchdog reset with TEST high 5/5 |
+| 9 | not done |
+| 10 | BSL 00.08.35.b3 (as in SLAU550), CRC Check supported, value ok |
+
+So on the FR2311 P1.6 (TDI) and P1.7 (TDO) work as UART and BSL pins with TEST high. With J9 fitted TCK was
+at GND during the tests, so a floating TCK isn't covered. Series resistors 330R by their
+colour bands, pull-up values and diode types not recorded.
+
+2 wires:
+
+| # | result |
+|---|--------|
+| 11 | entry pass: TEST low after RST 10/10 with 1, 5, 50 ms; TEST stays high 0/10. First reply good, then endless 51h |
+| - | break after each reply, 30 packets each: 3, 5, 10, 20, 50 ms 30/30; 2 ms 22/30; 1 ms 14/30; 0.5 ms 10/30; none 15/30 |
+| 12 | pass: 1000 pings between heartbeats, 0 lost/wrong, 0 collisions, 0 resets, own echo wrong 0 |
+| 13 | pass: loop 100/100, no stray bytes (with the 10 ms break). Junk in front of every boot frame: 00h, the adapter hears its own reset break |
+| 14 | pass 4 times: erase, blank check, write, verify over one line |
+| 15 | pass: RST pulse ignored with TEST high, resets with TEST low (3x each); back from watchdog reset 5/5; break 0.2 s and 2 s no reset (2 s: own echo wrong 18 = two heartbeats). Power-up not done |
+
+Once, right after rewiring, the MSP reset in the middle of a heartbeat (cause RST pin). Not
+repeated in 6 further port openings and 4 RST pulses with TEST high. Not explained: with one wire
+the MSP's own data pulls TEST low, so an RST glitch during a frame may reset it.
+
+First attempts (same day) got no byte at all in 192 timing variants: wiring error.

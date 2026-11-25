@@ -56,8 +56,13 @@ class OneWire:
 
 
 class FrBsl(Bsl):
-    final_low = None        # s: TEST low after RST rose (None: stays high, as in ../fw)
+    # s: TEST low after RST rose. The FR2311 starts its BSL only then (measured); None: stays
+    # high, as ../fw/tools/bsl.py (right for the G2553): the first packet gets lost
+    final_low = 0.005
     stray = b''             # bytes nobody asked for
+    # s: one wire, TX low after each reply. The FR2311 BSL hears its own reply, answers it with
+    # 51h, hears that too, and so on for ever. A break >= 3 ms stops it (measured), 0: none
+    quench = 0
 
     def enter(self):
         if self.final_low is None:
@@ -87,7 +92,15 @@ class FrBsl(Bsl):
             self.stray += s
             if self.verbose:
                 print('  ? stray', s.hex(' '))
-        return super().command(core, response)
+        try:
+            return super().command(core, response)
+        finally:
+            if self.quench:
+                self.ser.break_condition = True
+                time.sleep(self.quench)
+                self.ser.break_condition = False
+                time.sleep(0.005)
+                self.ser.reset_input_buffer()
 
     def state(self):
         """'locked' or 'unlocked' when the BSL answers, else BslError. Changes nothing."""
@@ -229,7 +242,7 @@ def probe(bsl, n):
             bsl.reset()                 # every try starts from the app
             time.sleep(0.1)
         print('%-26s %d/%d%s' % (name, good, n, '  (%s)' % errs[0] if errs else ''), flush=True)
-    bsl.final_low = None
+    bsl.final_low = FrBsl.final_low
 
 
 def loop(bsl, link, mem, n):
@@ -269,9 +282,9 @@ class FakeFr:
     """FR2xxx with entry sequence, BSL and (silent) app."""
     timeout = 0
 
-    def __init__(self, mem=None, fr2111=False, dies=False, low_kills=True):
+    def __init__(self, mem=None, fr2111=False, dies=False):
         self.mem = dict(mem or {})
-        self.fr2111, self.dies, self.low_kills = fr2111, dies, low_kills
+        self.fr2111, self.dies, self.armed = fr2111, dies, False
         self.out, self.bsl, self.unlocked, self.edges = bytearray(), False, False, 0
         self.t, self.r = True, True
         self.cmds = set()
@@ -285,8 +298,8 @@ class FakeFr:
     def break_condition(self, v):
         if not self.t and not v and not self.r:
             self.edges += 1
-        if v and self.r and self.bsl and self.low_kills:
-            self.bsl = False                        # garbage received
+        if v and self.r and self.armed:
+            self.bsl, self.armed = True, False      # starts with TEST low
         self.t = not v
 
     @property
@@ -299,7 +312,7 @@ class FakeFr:
             self.edges = 0
         if not v and not self.r:                    # RST rises
             self.unlocked = False
-            self.bsl = self.t and self.edges >= 2
+            self.bsl, self.armed = False, self.t and self.edges >= 2
         self.r = not v
 
     dtr = False
@@ -322,6 +335,7 @@ class FakeFr:
 
     def write(self, p):
         if not self.bsl:
+            self.bsl, self.armed = self.armed, False    # the first packet's low bits
             return
         n = p[1] | p[2] << 8
         core = p[3:3 + n]
@@ -358,9 +372,26 @@ class FakeFr:
 
 
 class FakeOneWire(FakeFr):
+    """The BSL hears its own reply: whatever comes before the next break is lost."""
+    flood = False
+
+    @property
+    def break_condition(self):
+        return FakeFr.break_condition.fget(self)
+
+    @break_condition.setter
+    def break_condition(self, v):
+        FakeFr.break_condition.fset(self, v)
+        self.flood = False
+
     def write(self, p):
         self.out += p
+        if self.flood:
+            self.out += b'\x51'
+            return
+        was = len(self.out)
         super().write(p)
+        self.flood = len(self.out) > was
 
 
 def selftest():
@@ -377,6 +408,8 @@ def selftest():
                 for dies in (False, True):
                     chip = kind(fr2111=fr2111, dies=dies)
                     bsl = FrBsl(OneWire(chip) if kind is FakeOneWire else chip)
+
+                    bsl.quench = 0.01 if kind is FakeOneWire else 0
 
                     def run(mem, old=None, force=False):
                         bsl.start(1)
@@ -400,8 +433,8 @@ def selftest():
         chip = FakeFr(img)
         probe(FrBsl(chip), 3)
         assert chip.mem == img
-        b = FrBsl(FakeFr(img, low_kills=True))
-        b.final_low = 0.005
+        b = FrBsl(FakeFr(img))
+        b.final_low = None
         try:
             b.start()
             raise AssertionError
@@ -434,6 +467,8 @@ def main():
     ap.add_argument('--test', choices=['tx', 'dtr'], default='tx')
     ap.add_argument('--no-reset', action='store_true')
     ap.add_argument('--onewire', action='store_true', help='TX and RX on one line')
+    ap.add_argument('--quench', type=float, default=10, metavar='MS',
+                    help='one wire: break after each BSL reply (0: none)')
     ap.add_argument('-v', '--verbose', action='store_true')
     a = ap.parse_args()
     if a.test == a.rst == 'dtr':
@@ -447,6 +482,7 @@ def main():
 
     ser = open_port(a.port)
     bsl = FrBsl(OneWire(ser) if a.onewire else ser, a.test, verbose=a.verbose, rst=a.rst)
+    bsl.quench = a.quench / 1000 if a.onewire else 0
     link = Link(ser, onewire=a.onewire)
     ok = True
     try:
