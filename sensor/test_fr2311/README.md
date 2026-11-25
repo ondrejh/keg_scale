@@ -20,19 +20,17 @@ See [Results](#results-2026-11-25-ch340).
 | BSL starts only after a TEST low following the RST rise (measured) | **yes** | not known |
 | BSL pins, TEST pull-down 20–50k, SBW timing | same | same |
 
-- `bsl_fr.py` flashes with password, write and read back only, what both chips have. Entry, reset and
-  packets come from `../fw/tools/bsl.py`. **`bsl.py flash` itself still uses Mass Erase and CRC
-  Check and can't work on the FR2111.**
+- `bsl_fr.py` and `../fw/tools/bsl.py` flash with password, write and read back only, what both
+  chips have. Entry, reset, packets and one-wire handling are in `bsl.py`.
 - **Entry:** after RST rises, TEST must go low once (any time, >= 1 ms tried) and high again. The
-  G2553 needs the opposite: TEST must stay high. `bsl_fr.py` adds the low; `enter()` in
-  `../fw/tools/bsl.py` leaves it out since the G2553 test, so its **first packet is lost** here.
+  G2553 needs the opposite: TEST must stay high (`Bsl.final_low`).
 - A blank FR2311 makes a failed entry look like success, so `loop` checks before every entry
   that the app is running.
 - A pass doesn't prove the FR2111's own BSL ROM.
 
 - **One wire:** the BSL hears its own reply (hardware UART). The reply itself arrives intact, then the
   BSL answers its echo with 51h, hears that too, and floods the line for ever. A break of >= 3 ms
-  after each reply stops it: `--onewire` sends 10 ms (`--quench MS`). The app isn't concerned.
+  after each reply stops it: `--onewire` sends 10 ms (`bsl_fr.py`: `--quench MS`). The app isn't concerned.
 
 ## LaunchPad
 
@@ -175,7 +173,7 @@ Then flash `ow.hex` (`--old build/v2.hex`) and rewire to 2 wires:
 
 - "stray bytes": bytes from the BSL that nobody asked for, e.g. answers to its own echo.
 - Break or step 15 may leave "own echo wrong" above 0: heartbeats sent while the line is held low.
-- If step 1 or 3 is unreliable: P1.4 (J1-2) and P1.5 (J1-6) to 3V3 with 47k each. SLAU550 recommends
+- If step 1 or 3 is unreliable (it wasn't, J9 fitted or removed): P1.4 (J1-2) and P1.5 (J1-6) to 3V3 with 47k each. SLAU550 recommends
   it (TCK/TMS must not float), with 1 nF to GND each. Start without: the sensor board has none.
 - `--rst dtr`: RST on DTR instead of RTS. `-v`: packet dump.
 
@@ -197,7 +195,7 @@ Then flash `ow.hex` (`--old build/v2.hex`) and rewire to 2 wires:
 | 10 | BSL 00.08.35.b3 (as in SLAU550), CRC Check supported, value ok |
 
 So on the FR2311 P1.6 (TDI) and P1.7 (TDO) work as UART and BSL pins with TEST high. With J9 fitted TCK was
-at GND during the tests, so a floating TCK isn't covered. Series resistors 330R by their
+at GND during these tests, see below for TCK open. Series resistors 330R by their
 colour bands, pull-up values and diode types not recorded.
 
 2 wires:
@@ -210,6 +208,15 @@ colour bands, pull-up values and diode types not recorded.
 | 13 | pass: loop 100/100, no stray bytes (with the 10 ms break). Junk in front of every boot frame: 00h, the adapter hears its own reset break |
 | 14 | pass 4 times: erase, blank check, write, verify over one line |
 | 15 | pass: RST pulse ignored with TEST high, resets with TEST low (3x each); back from watchdog reset 5/5; break 0.2 s and 2 s no reset (2 s: own echo wrong 18 = two heartbeats). Power-up not done |
+
+`../fw/tools/bsl.py` afterwards, with 2 wires and with 3 wires: up to date, forced (6x / 11x), other code
+(3 wires: also without `--old`), wrong password, erase, flash of the blank chip: all pass. Regression:
+loop 50/50 each, 100 / 500 pings, 0 errors.
+
+**J9 removed** (TCK and TMS open), 3 wires: entry 60/60 with the TEST low (0/20 without, as always), loop
+200/200, `bsl.py` forced flash 20/20, 1000 pings 0 errors, RST test 3x, watchdog 5/5, break 2 s: all pass.
+Before that the chip had been power-cycled and reported cause brownout: it had started by itself (state of the
+lines at that moment not known).
 
 Once, right after rewiring, the MSP reset in the middle of a heartbeat (cause RST pin). Not
 repeated in 6 further port openings and 4 RST pulses with TEST high. Not explained: with one wire

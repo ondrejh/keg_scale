@@ -1,7 +1,13 @@
 # ToDo
 
-- [ ] wire MSP430FR2311 and test do BSL tests (2/3 wire)
+- [x] wire MSP430FR2311 and test do BSL tests (2/3 wire)
   - test_fr2311 folder
+- [ ] FR2311: power-up with TEST high, 3 wires and one wire
+  - `test_fr2311/host_fr.py /dev/ttyUSB0 power-test` (one wire: `--onewire`), asks to remove the chip's 3V3
+- [ ] FR2311: one wire with J9 removed (TCK open); passed with 3 wires
+- [ ] FR2311: RST glitch during a frame with one wire, does it reset the MSP? (one unexplained reset)
+- [ ] FR2111: entry, flash, 3 wires and one wire on the real chip (other BSL version than the FR2311)
+- [ ] on the first board: the rest of [Open points](#open-points-verify-on-the-bench--in-slau610)
 
 # keg20 sensor bridge (MSP430FR2111 + ADS1231 + DS18B20)
 
@@ -14,7 +20,10 @@ Schematic: `schematic/keg20/sensor/` (KiCad 10). Reference designators below are
 
 Status:
 
-- Schematic drawn, ERC clean. No PCB yet, nothing tested on hardware.
+- Schematic drawn, ERC clean. No PCB yet, the FR2111 itself not tested.
+- The link (TEST on RX, BSL entry, flashing, reset) is tested with 3 wires and with one wire on an
+  FR2311, which has the same BSL pins ([test_fr2311](test_fr2311/README.md)), before that on a
+  G2553 ([test_g2553](test_g2553/README.md)).
 - Firmware (`sensor/fw/`) builds, but it is still written for the **HX711**. With the
   ADS1231 it **must drive PDWN (P1.3) high**, see [ADS1231](#ads1231).
 
@@ -148,9 +157,13 @@ As a standalone module only J1 3–6 are needed: **TXD, RST, GND, +5V**, with JP
 - R7 holds TEST high at power-up and the app doesn't start by itself (seen on a G2553): the host must
   reset it (TXD low ≥ 100 µs, pulse RST low). Or cut JP3 and fit R8 if UART flashing isn't needed.
 - The app only sends, so listening works with the firmware as it is.
-- The MSP also receives what it sends. The app ignores RX. The BSL works over one wire on a
-  **G2553** (software UART, flash and verify ok); the FR2111 BSL uses the hardware UART, so it
-  may hear itself. Until that is tested, flash with two wires: JP2 open and J1-2 connected.
+- The MSP also receives what it sends. The app ignores RX, but **the BSL hears its own replies**
+  (hardware UART, measured on an FR2311): a reply arrives intact, then the BSL answers its echo with
+  51h, hears that too, and floods the line for ever. **The host must send a break (TX low ≥ 3 ms, use
+  10 ms) after each BSL reply.** With it flash, read back and 100 entry loops passed; without, about
+  half of the replies were lost. `bsl.py --onewire` does it.
+- With one wire the MSP's own data also pulls TEST low, so a glitch on RST during a frame may reset the MSP
+  (one unexplained RST reset seen on the bench, right after rewiring). Keep RST quiet.
 - A host that also sends must not talk over the MSP's frames: send only between them.
 - TEST toggles with the MSP's own data as well (harmless while RST is high, see below).
 - R7 must be 4k7: TEST has an internal pull-down (20–50k) and with an open-drain host only R7
@@ -179,8 +192,9 @@ the time and toggles with the UART data.
   the line is back at 1 for the next TMS slot.
 - R7 keeps TEST high when nothing is connected to J1-3.
 - At power-up with TEST high the MSP doesn't start its app without help (seen on a G2553, LED
-  only). In normal use it doesn't matter: the ESP always takes over at boot with its own reset or
-  BSL sequence (both need TEST low or the BSL entry pulses).
+  only; not tested on an FR2xx). In normal use it doesn't matter: the ESP always takes over at boot with
+  its own reset or BSL sequence (both need TEST low or the BSL entry pulses).
+- A **watchdog reset** with TEST high does restart the app (FR2311, 5/5).
 - When the ESP resets, its ROM log toggles GPIO16. The MSP's RX and TEST see
   garbage; this is harmless because the app ignores RX.
 - SBW debugging (TI debugger) is possible only with the J1 link disconnected.
@@ -280,16 +294,24 @@ The MSP image is embedded in the fw20 image, so one `idf.py flash` updates both 
 
 1. **BSL entry** (GPIO9 and GPIO16 as plain GPIO):
    TX low and RST low (TX low ≥ 100 µs first) → TX high, low, high (two
-   rising edges on TEST) → RST high while TX is still high. **Leave TX high**: the BSL
-   receives any later low as data (seen on a G2553, it then ignores the sync).
-   Hand GPIO16 back to the UART (9600 8E1, idle high, no glitch).
+   rising edges on TEST) → RST high while TX is still high → **TX low once** (1–200 ms tried, use
+   5 ms) → TX high. The FR2311 starts its BSL only at that low; without it the first packet is
+   lost. (A G2553 needs the opposite, TX must stay high.)
+   Hand GPIO16 back to the UART (9600 8E1, idle high, no glitch), wait 50 ms.
+   Check with a packet that changes nothing: *TX data block* (0x18) without password → `3B 04`
+   ("locked"). No answer → repeat the entry.
 2. **Firmware check:** the BSL password is the 32-byte interrupt vector table
    (0xFFE0–0xFFFF). The ESP sends the vectors of its embedded image.
-   - Password accepted → BSL *CRC check* (0x16) over the code area. If it
-     matches the embedded image, the firmware is OK.
-   - Password wrong → the FRAM BSL mass-erases. Then send the password of
-     the erased chip (32 × 0xFF), write the image with *RX data block* (0x10;
-     ~800 B, about 1 s at 9600) and check the CRC.
+   - Password accepted → read the code area back with *TX data block* (0x18) and compare. If it
+     matches the embedded image, the firmware is OK. If not, erase: send a wrong password.
+   - Password wrong → **the BSL erases everything** and answers 05.
+   - After an erase send the password of the erased chip (32 × 0xFF; the FR2311 goes on in the
+     same session, otherwise enter again), write the image with *RX data block* (0x10, max. 256
+     data bytes; ~800 B, about 1 s at 9600), reset vector last, and read it back.
+   - The FR21xx BSL has **no Mass Erase (0x15), CRC Check (0x16) and TX BSL Version (0x19)**
+     (SLAU550AB table 4-9). Never write FF80–FF87 (JTAG/BSL signatures).
+   - Wait ≥ 1.2 ms after the BSL's last byte before the next packet (3 ms used). One wire (JP2
+     closed): a break after each reply, see above.
 3. **Start the app:** TX low ≥ 100 µs, RST low → high (TEST low), wait for the
    `V<xx>` line and start reading `H`/`T` lines. Ignore junk in front of the first line:
    the reset's TX low is data for the BSL (it sends a NAK) and TX glitches during reset.
@@ -348,36 +370,45 @@ The ADC also needs 5 V on J1-6 or J7:
   - It drives RST from RTS and makes the TEST pulses on TX with a UART break
     (break = TX low).
   - It runs the same algorithm as the ESP boot flow: the image's vector table is
-    the password, a matching CRC means "up to date" and the write is skipped,
-    otherwise it erases, writes and verifies with the CRC check.
+    the password, an equal read-back means "up to date" and the write is skipped,
+    otherwise it erases (wrong password), writes and reads back. With `--old OLD.hex` the
+    vectors of the old image are the password. Without it other vectors just mean an erase.
   - It then resets the MSP into the app.
   - Other commands: `bsl.py erase PORT`, `bsl.py reset PORT`.
-  - Options: `--force` (flash even if up to date), `--no-reset`, `-v` (packet
-    dump), `--test dtr` (TEST wired to DTR instead of TX),
+  - Options: `--onewire` (JP2 closed, adapter TX behind a diode as in
+    [test_fr2311](test_fr2311/README.md)), `--force` (flash even if up to date), `--no-reset`,
+    `-v` (packet dump), `--test dtr` (TEST wired to DTR instead of TX),
     `--invert-reset`/`--invert-test`.
-  - `bsl.py --selftest` runs the flash flow against a simulated BSL.
-  - The adapter must support break (FTDI and CP210x do).
+  - `bsl.py --selftest` runs the flash flow against a simulated BSL. On hardware it is tested with
+    an FR2311, 3 wires and one wire (up to date, forced, other code, wrong password, erase, blank chip).
+  - The adapter must support break (FTDI, CP210x and CH340 do).
 
 ## Open points (verify on the bench / in SLAU610)
 
-- [ ] TEST high "enables the JTAG pins" (datasheet 9.7): do P1.6 (TDI) and P1.7 (TDO) still
-      work as UART then? The principle passed on a G2553 (P1.5 = TMS as RX), see
-      `test_g2553/README.md`. Not shown for the FR2111, its TX pin is TDO
-- [ ] TCK/TMS (P1.4/P1.5) floating during the BSL can enter JTAG mode (SLAU319 1.3.1.1.1, flash
-      devices): external pull-ups needed on the FR2111?
-- [ ] Exact FR2xx BSL entry timing (pulse widths, TEST high → RST high delay)
-- [ ] Wrong BSL password → mass erase on FR2111?
-- [ ] BSL CRC check command and maximum RX data block size on FR2111
-- [ ] App keeps running with TEST toggling (scope: no resets, no stalls), and the
-      BSL keeps working with TEST high
-- [ ] Contention on RST in the TDO slot with R1 330R (the G2553 test passed with 1k and 47k/47k)
+Answered by the FR2311 test (repeat on the first FR2111, its BSL ROM is another version):
+
+- [x] TEST high "enables the JTAG pins" (datasheet 9.7): P1.6 (TDI) and P1.7 (TDO) still work as UART,
+      in the app and in the BSL
+- [x] BSL entry: TEST low once after RST rises. Pulses of 5 ms, RST high 5 ms after TEST high
+- [x] Wrong BSL password erases (SLAU550AB, and seen on the FR2311)
+- [x] BSL commands: no CRC check, RX data block max. 256 bytes (SLAU550AB)
+- [x] App keeps running with TEST toggling (1000 pings with 3 wires and with one wire, no resets), the BSL works with TEST high
+- [x] One-wire mode: app and BSL work, with a break after each BSL reply
+- [x] TCK/TMS (P1.4/P1.5) floating during the BSL can enter JTAG mode (SLAU550 3.3.2.1 recommends 47k
+      pull-up and 1 nF each): 260 of 260 entries and 20 flashes ok with both open (3 wires,
+      short wiring, no nearby noise source). No pull-ups on the board for now
+
+Still open:
+
+- [ ] **FR2111**: repeat entry, flash and one wire on the real chip
+- [ ] Contention on RST in the TDO slot with R1 330R: no problem seen on the FR2311, not measured
 - [ ] REFO / DCO accuracy for 9600 baud over the keg temperature range
 - [ ] Firmware: drive PDWN (P1.3), check the ADS1231 readout
 - [ ] Bridge common mode within 1.5–1.8 V, ADC noise with JP1 1-2 and 2-3
-- [ ] One-wire mode (JP2 closed, R7 4k7, R5 330R): does the FR2111 BSL work over one wire? App and BSL
-      passed on a G2553 with a cable, see `test_g2553/README.md`. Line levels not measured
+- [ ] One-wire line levels (R7 4k7, R5 330R) not measured
 - [ ] U4 stable with JP1 2-3 (8.1 µF in total), 5 V overshoot at plug-in below 6 V at U4
-- [ ] FR2111: does it also need a reset after power-up with TEST high (as the G2553)?
+- [ ] Does an FR2xx also need a reset after power-up with TEST high (as the G2553)? Not tested on the FR2311 in
+      a controlled way; once it came up by itself after a power cycle (cause brownout)
 - [ ] Spy-Bi-Wire over J8 with R2 4k7 (TI's reference circuit: 47k)
 - [ ] Check the D3/D4 ratings in their datasheets before ordering
 - [ ] Check timing on the scope: 1-wire slots and the read sample point

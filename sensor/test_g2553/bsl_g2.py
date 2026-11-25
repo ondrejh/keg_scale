@@ -46,6 +46,7 @@ class Nak(BslError):
 
 
 class G2Bsl(Bsl):
+    final_low = None    # TEST stays high after entry, unlike the FR2xx
     manual = False
     onewire = False     # everything written is echoed
     synced = False      # sync already acknowledged, command frame expected next

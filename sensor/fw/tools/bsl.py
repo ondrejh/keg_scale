@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Flash the keg20 sensor bridge (MSP430FR2xxx) through its ROM BSL over a USB-UART.
 
-    bsl.py flash /dev/ttyUSB0 build/sensor.hex [--force] [--no-reset]
+    bsl.py flash /dev/ttyUSB0 build/sensor.hex [--old OLD.hex] [--force] [--no-reset]
     bsl.py erase /dev/ttyUSB0
     bsl.py reset /dev/ttyUSB0
     bsl.py --selftest
@@ -18,11 +18,19 @@ flip that if the adapter or wiring inverts.
 
 Flash flow:
   1. hardware BSL entry
-  2. password = vector table of the image (0xFFE0-0xFFFF). If it is accepted and
-     the CRC of every image segment matches, the chip is up to date (unless --force).
-  3. otherwise mass erase (a wrong password erases too), password 32 x 0xFF,
-     write the image, verify with the BSL CRC check
+  2. password = vector table of the image, or of --old (0xFFE0-0xFFFF). If it is accepted
+     and the memory reads back equal, the chip is up to date (unless --force).
+  3. otherwise erase with a wrong password (a rejected one in step 2 has erased already),
+     password 32 x 0xFF, write the image, read it back
   4. reset into the application (TEST low, RST pulse)
+
+The FR20xx/FR21xx BSL has no Mass Erase (0x15), CRC Check (0x16) and TX BSL Version (0x19)
+(SLAU550AB table 4-9), so they aren't used.
+
+--onewire: TX and RX on one line (TX open drain or behind a diode). The BSL hears its own
+replies there; a break after each one keeps it from answering itself for ever.
+
+Tested on an FR2311 (../../test_fr2311), not on an FR2111 yet.
 
 Input: Intel HEX (build/sensor.hex) or TI-TXT.
 """
@@ -35,13 +43,13 @@ import time
 BAUD = 9600
 CMD_RX_DATA = 0x10
 CMD_RX_PASSWORD = 0x11
-CMD_MASS_ERASE = 0x15
-CMD_CRC_CHECK = 0x16
 CMD_LOAD_PC = 0x17
+CMD_TX_DATA = 0x18
 RSP_DATA = 0x3A
 RSP_MESSAGE = 0x3B
 
-BLOCK = 64          # data bytes per RX data block (well below the BSL buffer)
+BLOCK = 64          # data bytes per RX/TX data block (max. 256)
+GAP = 0.003         # s before each packet: >= 1.2 ms after the BSL's last byte
 
 ACK_ERRORS = {
     0x51: 'header incorrect', 0x52: 'checksum incorrect', 0x53: 'packet size zero',
@@ -54,6 +62,8 @@ MESSAGES = {
 }
 
 VECTORS = 0xFFE0    # 32-byte interrupt vector table = BSL password
+ERASED = b'\xFF' * 32
+SIGNATURES = range(0xFF80, 0xFF88)      # JTAG/BSL signatures: can lock the chip for good
 
 
 class BslError(Exception):
@@ -61,7 +71,7 @@ class BslError(Exception):
 
 
 def crc_ccitt(data, crc=0xFFFF):
-    """CRC-16-CCITT (poly 0x1021, init 0xFFFF): packet checksum and CRC check command."""
+    """CRC-16-CCITT (poly 0x1021, init 0xFFFF): packet checksum."""
     for b in data:
         x = ((crc >> 8) ^ b) & 0xFF
         x ^= x >> 4
@@ -73,7 +83,33 @@ def addr3(a):
     return bytes([a & 0xFF, (a >> 8) & 0xFF, (a >> 16) & 0xFF])
 
 
+class OneWire:
+    """Serial port whose own bytes come back: reads and checks them after each write."""
+
+    def __init__(self, ser):
+        object.__setattr__(self, 'ser', ser)
+
+    def __getattr__(self, k):
+        return getattr(self.ser, k)
+
+    def __setattr__(self, k, v):
+        setattr(self.ser, k, v)
+
+    def write(self, data):
+        self.ser.write(data)
+        echo = self.ser.read(len(data))
+        if echo != data:
+            raise BslError('one wire: sent %s, line shows %s' % (data.hex(' '), echo.hex(' ')))
+
+
 class Bsl:
+    # s: TEST low after RST rose. The FR2311 starts its BSL only then (any length from 1 ms, up to
+    # 500 ms later); without it the first packet is lost. None: TEST stays high, as the
+    # G2553 needs it (its BSL takes the low for data)
+    final_low = 0.005
+    # s: TX low after each reply, for one wire; 0: none. >= 3 ms needed on the FR2311
+    quench = 0
+
     def __init__(self, ser, test='tx', invert_test=False, invert_reset=False, verbose=False,
                  rst='rts'):
         self.ser = ser
@@ -106,10 +142,8 @@ class Bsl:
             self.test(False)
 
     def enter(self):
-        """Hardware BSL entry: two rising edges on TEST while RST is low,
-        RST rises while TEST is high, then TEST low (only if TEST is a separate line).
-        With TEST tied to TX it must stay high: the running BSL would receive the low
-        as data (seen on a G2553: garbled sync, no answer)."""
+        """Hardware BSL entry: two rising edges on TEST while RST is low, RST rises while
+        TEST is high, then TEST low once (see final_low)."""
         self.test(False)
         time.sleep(0.01)    # TEST low >= 100 us: Spy-Bi-Wire off, RST is reset again
         self.rst(False)
@@ -122,12 +156,25 @@ class Bsl:
         time.sleep(0.005)
         self.rst(True)
         time.sleep(0.005)
-        if self.test_pin != 'tx':
+        if self.final_low is not None or self.test_pin != 'tx':
             self.test(False)
-            time.sleep(0.005)
+            time.sleep(self.final_low or 0.005)
         self.release_test()
         time.sleep(0.05)    # BSL start-up
         self.ser.reset_input_buffer()   # drop application frames sent before the reset
+
+    def start(self, tries=3):
+        """Entry, checked with a packet that changes nothing. Returns the number of tries."""
+        for i in range(1, tries + 1):
+            self.enter()
+            try:
+                s = self.state()
+                if s != 'locked':
+                    raise BslError('BSL is %s right after entry: no reset happened' % s)
+                return i
+            except BslError as e:
+                err = e
+        raise BslError('no BSL after %d entries (%s)' % (tries, err))
 
     def reset(self):
         """Reset into the application: TEST low (SBW off), RST pulse."""
@@ -149,6 +196,18 @@ class Bsl:
 
     def command(self, core, response=True):
         """Send a core command, check the ACK, return (rsp_cmd, rsp_data) or None."""
+        time.sleep(GAP)
+        try:
+            return self._command(core, response)
+        finally:
+            if self.quench:
+                self.ser.break_condition = True
+                time.sleep(self.quench)
+                self.ser.break_condition = False
+                time.sleep(0.005)
+                self.ser.reset_input_buffer()
+
+    def _command(self, core, response):
         pkt = bytes([0x80, len(core) & 0xFF, len(core) >> 8]) + core
         crc = crc_ccitt(core)
         pkt += bytes([crc & 0xFF, crc >> 8])
@@ -188,24 +247,42 @@ class Bsl:
             raise BslError('password: %s' % MESSAGES.get(msg, hex(msg)))
         return msg == 0x00
 
-    def mass_erase(self):
-        msg = self.message(bytes([CMD_MASS_ERASE]))
-        if msg != 0x00:
-            raise BslError('mass erase: %s' % MESSAGES.get(msg, hex(msg)))
-
     def write(self, addr, data):
         msg = self.message(bytes([CMD_RX_DATA]) + addr3(addr) + data)
         if msg != 0x00:
             raise BslError('write 0x%04X: %s' % (addr, MESSAGES.get(msg, hex(msg))))
 
-    def crc(self, addr, length):
-        cmd, data = self.command(bytes([CMD_CRC_CHECK]) + addr3(addr)
-                                 + bytes([length & 0xFF, length >> 8]))
-        if cmd == RSP_MESSAGE and data:
-            raise BslError('CRC check: %s' % MESSAGES.get(data[0], hex(data[0])))
-        if cmd != RSP_DATA or len(data) != 2:
-            raise BslError('unexpected CRC response 0x%02X %s' % (cmd, data.hex(' ')))
-        return data[0] | (data[1] << 8)
+    def state(self):
+        """'locked' or 'unlocked' when the BSL answers, else BslError. Changes nothing."""
+        cmd, data = self.command(bytes([CMD_TX_DATA]) + addr3(VECTORS) + b'\x02\x00')
+        if cmd == RSP_DATA:
+            return 'unlocked'
+        if cmd == RSP_MESSAGE and data == b'\x04':
+            return 'locked'
+        raise BslError('unexpected answer 0x%02X %s' % (cmd, data.hex(' ')))
+
+    def read_mem(self, addr, n):
+        out = b''
+        while n:
+            k = min(n, BLOCK)
+            cmd, data = self.command(bytes([CMD_TX_DATA]) + addr3(addr) + bytes([k, 0]))
+            if cmd != RSP_DATA or len(data) != k:
+                raise BslError('read 0x%04X: 0x%02X %s' % (addr, cmd, data.hex(' ')))
+            out += data
+            addr, n = addr + k, n - k
+        return out
+
+    def unlock_erased(self):
+        """After a wrong password: the FF password, with a new entry if the BSL is gone."""
+        try:
+            if self.password(ERASED):
+                return
+        except BslError:
+            pass
+        time.sleep(0.5)
+        self.start()
+        if not self.password(ERASED):
+            raise BslError('erased-chip password rejected')
 
 
 # ---- image files ----
@@ -286,23 +363,44 @@ def password_of(mem):
 
 # ---- actions ----
 
-def flash(bsl, mem, force=False):
-    segs = segments(mem)
+def check_image(mem):
+    if any(mem.get(a, 0xFF) != 0xFF for a in SIGNATURES):
+        raise BslError('image writes the JTAG/BSL signatures (FF80-FF87), refusing')
+    if (mem.get(0xFFFE, 0xFF), mem.get(0xFFFF, 0xFF)) == (0xFF, 0xFF):
+        raise BslError('image has no reset vector')
+
+
+def difference(bsl, mem):
+    """First difference between image and chip, or None."""
+    for a, d in segments(mem):
+        got = bsl.read_mem(a, len(d))
+        for i in range(len(d)):
+            if got[i] != d[i]:
+                return '0x%04X is %02X, expected %02X' % (a + i, got[i], d[i])
+    return None
+
+
+def flash(bsl, mem, force=False, old=None):
+    """False: was up to date."""
+    check_image(mem)
+    segs = segments(mem)                # ascending: the reset vector goes last
     total = sum(len(d) for _, d in segs)
     for a, d in segs:
         print('segment 0x%04X-0x%04X (%d bytes)' % (a, a + len(d) - 1, len(d)))
 
-    bsl.enter()
-    if bsl.password(password_of(mem)):
-        if not force and all(bsl.crc(a, len(d)) == crc_ccitt(d) for a, d in segs):
+    bsl.start()
+    pw = password_of(old or mem)
+    if bsl.password(pw):
+        if not force and difference(bsl, mem) is None:
             print('firmware up to date')
             return False
-        print('firmware differs: mass erase')
-        bsl.mass_erase()
+        print('password accepted, %s: erasing with a wrong password'
+              % ('forced' if force else 'firmware differs'))
+        if bsl.password(bytes(b ^ 0xFF for b in pw)):
+            raise BslError('a wrong password was accepted')
     else:
-        print('password rejected: chip mass-erased by the BSL')
-    if not bsl.password(b'\xFF' * 32):
-        raise BslError('erased-chip password rejected')
+        print('password rejected: chip erased by the BSL')
+    bsl.unlock_erased()
 
     done = 0
     for a, d in segs:
@@ -311,23 +409,19 @@ def flash(bsl, mem, force=False):
             done += len(d[off:off + BLOCK])
             print('\rwriting %d/%d' % (done, total), end='', flush=True)
     print()
-    for a, d in segs:
-        got, want = bsl.crc(a, len(d)), crc_ccitt(d)
-        if got != want:
-            raise BslError('verify 0x%04X: CRC 0x%04X, expected 0x%04X' % (a, got, want))
+    diff = difference(bsl, mem)
+    if diff:
+        raise BslError('verify: ' + diff)
     print('verify ok')
     return True
 
 
 def erase(bsl):
-    bsl.enter()
-    # Mass erase needs an unlocked BSL; a wrong password erases anyway.
-    if not bsl.password(b'\xFF' * 32):
-        print('password rejected: chip mass-erased by the BSL')
-        if not bsl.password(b'\xFF' * 32):
-            raise BslError('erased-chip password rejected')
-    else:
-        bsl.mass_erase()
+    bsl.start()
+    # a password that no program has: all vectors 0
+    if bsl.password(bytes(32)):
+        raise BslError('the all-zero password was accepted: not erased')
+    bsl.unlock_erased()
     print('erased')
 
 
@@ -349,16 +443,50 @@ def open_port(port):
 # ---- self test against a simulated BSL ----
 
 class FakeBsl:
-    """Minimal FR2xxx BSL model: memory, password lock, mass erase on bad password."""
+    """FR21xx model: entry sequence, password lock, erase on a bad password, commands it has.
+    onewire: own bytes come back, and after a reply it is busy with itself until a break.
+    dies: an erase ends the BSL session. needs_low: starts only with a TEST low after RST rose."""
 
-    def __init__(self, mem=None):
-        self.mem = dict(mem or {})
-        self.unlocked = False
-        self.out = bytearray()
-
-    rts = False
     dtr = False
-    break_condition = False
+
+    def __init__(self, mem=None, onewire=False, dies=False, needs_low=True):
+        self.mem = dict(mem or {})
+        self.onewire, self.dies, self.needs_low = onewire, dies, needs_low
+        self.out = bytearray()
+        self.t = self.r = True          # TEST, RST
+        self.edges = 0
+        self.bsl = self.armed = self.unlocked = self.flood = False
+
+    @property
+    def break_condition(self):
+        return not self.t
+
+    @break_condition.setter
+    def break_condition(self, v):
+        self.flood = False
+        if not self.t and not v and not self.r:
+            self.edges += 1
+        if v and self.r and self.armed:
+            self.bsl, self.armed = True, False
+        self.t = not v
+
+    @property
+    def rts(self):
+        return not self.r
+
+    @rts.setter
+    def rts(self, v):
+        if v and self.r:
+            self.edges = 0
+        if not v and not self.r:        # RST rises
+            entry = self.t and self.edges >= 2
+            self.unlocked = False
+            self.armed, self.bsl = entry and self.needs_low, entry and not self.needs_low
+        self.r = not v
+
+    @property
+    def in_waiting(self):
+        return len(self.out)
 
     def reset_input_buffer(self):
         self.out.clear()
@@ -369,10 +497,18 @@ class FakeBsl:
 
     def _reply(self, cmd, data):
         core = bytes([cmd]) + data
-        crc = crc_ccitt(core)
-        self.out += bytes([0x80, len(core), 0]) + core + bytes([crc & 0xFF, crc >> 8])
+        self.out += bytes([0x80, len(core), 0]) + core + crc_ccitt(core).to_bytes(2, 'little')
 
     def write(self, pkt):
+        if self.onewire:
+            self.out += pkt
+        if not self.bsl:                # running the app, or lost: its low bits start the BSL
+            self.bsl, self.armed = self.armed, False
+            return
+        if self.flood:
+            self.out += b'\x51' * 20
+            return
+        self.flood = self.onewire
         assert pkt[0] == 0x80
         n = pkt[1] | (pkt[2] << 8)
         core, ck = pkt[3:3 + n], pkt[3 + n:5 + n]
@@ -382,33 +518,27 @@ class FakeBsl:
         self.out.append(0x00)
         cmd, data = core[0], core[1:]
         if cmd == CMD_RX_PASSWORD:
-            ok = data == bytes(self.mem.get(VECTORS + i, 0xFF) for i in range(32))
-            if not ok:
+            self.unlocked = data == password_of(self.mem)
+            if not self.unlocked:
                 self.mem.clear()
-            self.unlocked = ok
-            self._reply(RSP_MESSAGE, bytes([0x00 if ok else 0x05]))
-            return
-        if not self.unlocked:
-            self._reply(RSP_MESSAGE, b'\x04')
-            return
-        a = data[0] | (data[1] << 8) | (data[2] << 16) if len(data) >= 3 else 0
-        if cmd == CMD_MASS_ERASE:
-            self.mem.clear()
-            self._reply(RSP_MESSAGE, b'\x00')
-        elif cmd == CMD_RX_DATA:
-            for i, b in enumerate(data[3:]):
-                self.mem[a + i] = b
-            self._reply(RSP_MESSAGE, b'\x00')
-        elif cmd == CMD_CRC_CHECK:
-            ln = data[3] | (data[4] << 8)
-            c = crc_ccitt(bytes(self.mem.get(a + i, 0xFF) for i in range(ln)))
-            self._reply(RSP_DATA, bytes([c & 0xFF, c >> 8]))
-        else:
+                self.bsl = not self.dies
+            self._reply(RSP_MESSAGE, b'\x00' if self.unlocked else b'\x05')
+        elif cmd not in (CMD_RX_DATA, CMD_TX_DATA, CMD_LOAD_PC):
             self._reply(RSP_MESSAGE, b'\x07')
+        elif not self.unlocked:
+            self._reply(RSP_MESSAGE, b'\x04')
+        elif cmd == CMD_RX_DATA:
+            a = data[0] | (data[1] << 8) | (data[2] << 16)
+            self.mem.update({a + i: b for i, b in enumerate(data[3:])})
+            self._reply(RSP_MESSAGE, b'\x00')
+        else:
+            a, n = data[0] | (data[1] << 8), data[3] | (data[4] << 8)
+            self._reply(RSP_DATA, bytes(self.mem.get(a + i, 0xFF) for i in range(n)))
 
 
 def selftest():
     assert crc_ccitt(b'123456789') == 0x29B1     # CRC-16/CCITT-FALSE check value
+    assert crc_ccitt(b'\x11' + ERASED) == 0xE69E     # SLAU550AB 4.1.5.2, blank device password
     image = {0xFC00 + i: (i * 7) & 0xFF for i in range(301)}    # odd length -> padding
     image.update({0xFFFE: 0x00, 0xFFFF: 0xFC})
     segs = segments(image)
@@ -416,18 +546,51 @@ def selftest():
     assert load_ihex(':02FFFE0000FC05\n:00000001FF\n') == {0xFFFE: 0x00, 0xFFFF: 0xFC}
     assert load_titxt('@FFFE\n00 FC\nq\n') == {0xFFFE: 0x00, 0xFFFF: 0xFC}
 
+    def fails(f, *args):
+        try:
+            f(*args)
+        except BslError:
+            return True
+        return False
+    assert fails(check_image, {0xFC00: 1})
+    assert fails(check_image, {**image, 0xFF84: 0x55})
+
     old_sleep = time.sleep
     time.sleep = lambda s: None
     try:
-        chip = FakeBsl()                                    # blank chip
-        assert flash(Bsl(chip), image) is True
-        assert all(chip.mem.get(a) == b for a, b in image.items())
-        assert flash(Bsl(chip), image) is False             # same image: skipped
-        image2 = dict(image)
-        image2[0xFC10] ^= 0xFF                              # same vectors, other code
-        assert flash(Bsl(chip), image2) is True and chip.mem[0xFC10] == image2[0xFC10]
-        chip.mem[0xFFE0] = 0x12                             # other vectors: wrong password
-        assert flash(Bsl(chip), image) is True and chip.mem[0xFC10] == image[0xFC10]
+        for onewire, dies, needs_low in ((o, d, n) for o in (False, True)
+                                         for d in (False, True) for n in (False, True)):
+            chip = FakeBsl(onewire=onewire, dies=dies, needs_low=needs_low)
+
+            def run(mem, **kw):
+                b = Bsl(OneWire(chip) if onewire else chip)
+                b.quench = 0.01 if onewire else 0
+                done = flash(b, mem, **kw)
+                assert all(chip.mem.get(a) == v for a, v in mem.items())
+                b.reset()
+                assert not chip.bsl
+                return done
+            assert run(image) is True                       # blank chip
+            assert run(image) is False                      # same image: skipped
+            assert run(image, force=True) is True
+            image2 = dict(image)
+            image2[0xFC10] ^= 0xFF                          # same vectors, other code
+            assert run(image2) is True
+            image3 = dict(image)
+            image3[0xFFE0] = 0x12                           # other vectors
+            assert run(image3, old=image2) is True          # ... known
+            assert run(image) is True                       # ... unknown: wrong password
+            b = Bsl(OneWire(chip) if onewire else chip)
+            b.quench = 0.01 if onewire else 0
+            erase(b)
+            assert not chip.mem
+            erase(b)                                        # blank already
+            if onewire:
+                b.quench = 0
+                assert fails(flash, b, image)               # floods without the break
+        b = Bsl(FakeBsl(image))
+        b.final_low = None
+        assert fails(b.start)                               # every first packet lost
     finally:
         time.sleep = old_sleep
     print('selftest ok')
@@ -441,6 +604,9 @@ def main():
     ap.add_argument('action', choices=['flash', 'erase', 'reset'])
     ap.add_argument('port', help='serial port, e.g. /dev/ttyUSB0')
     ap.add_argument('image', nargs='?', help='Intel HEX or TI-TXT (flash)')
+    ap.add_argument('--old', help='flash: image now in the chip (password); without it a chip with '
+                                  'other vectors is erased')
+    ap.add_argument('--onewire', action='store_true', help='TX and RX on one line')
     ap.add_argument('--force', action='store_true', help='flash even if up to date')
     ap.add_argument('--no-reset', action='store_true', help='stay in the BSL after flashing')
     ap.add_argument('--test', choices=['tx', 'dtr'], default='tx',
@@ -457,12 +623,14 @@ def main():
         ap.error('DTR cannot drive both RST and TEST')
 
     mem = load_image(args.image) if args.action == 'flash' else None
+    old = load_image(args.old) if args.old else None
     ser = open_port(args.port)
-    bsl = Bsl(ser, args.test, args.invert_test, args.invert_reset, args.verbose,
+    bsl = Bsl(OneWire(ser) if args.onewire else ser, args.test, args.invert_test, args.invert_reset, args.verbose,
               args.rst)
+    bsl.quench = 0.01 if args.onewire else 0
     try:
         if args.action == 'flash':
-            flash(bsl, mem, args.force)
+            flash(bsl, mem, args.force, old)
         elif args.action == 'erase':
             erase(bsl)
         if not (args.action == 'flash' and args.no_reset):

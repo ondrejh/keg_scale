@@ -23,147 +23,47 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'fw', 'tools'))
-from bsl import (Bsl, BslError, CMD_CRC_CHECK, CMD_RX_DATA, CMD_RX_PASSWORD, MESSAGES,  # noqa: E402
-                 RSP_DATA, RSP_MESSAGE, addr3, crc_ccitt, load_image, open_port,
-                 password_of, segments)
+from bsl import (BLOCK, Bsl, BslError, CMD_RX_DATA, CMD_RX_PASSWORD, CMD_TX_DATA, ERASED,  # noqa: E402
+                 MESSAGES, OneWire, RSP_DATA, RSP_MESSAGE, addr3, crc_ccitt, load_image,
+                 open_port, password_of, segments)
+from bsl import check_image as check_common, difference as differences      # noqa: E402
 from host_fr import Link, describe, wait_boot           # noqa: E402
 
-CMD_TX_DATA = 0x18
+CMD_CRC_CHECK = 0x16
 CMD_TX_VERSION = 0x19
 START, END = 0xF100, 0x10000        # FRAM, same on the FR2111
-SIG = range(0xFF80, 0xFF88)         # JTAG/BSL signatures: can lock the chip for good
-BLOCK = 64                          # <= 256
-FF = b'\xFF' * 32
-
-
-class OneWire:
-    """Serial port whose own bytes come back: reads and checks them after each write."""
-
-    def __init__(self, ser):
-        object.__setattr__(self, 'ser', ser)
-
-    def __getattr__(self, k):
-        return getattr(self.ser, k)
-
-    def __setattr__(self, k, v):
-        setattr(self.ser, k, v)
-
-    def write(self, data):
-        self.ser.write(data)
-        echo = self.ser.read(len(data))
-        if echo != data:
-            raise BslError('one wire: sent %s, line shows %s' % (data.hex(' '), echo.hex(' ')))
 
 
 class FrBsl(Bsl):
-    # s: TEST low after RST rose. The FR2311 starts its BSL only then (measured); None: stays
-    # high, as ../fw/tools/bsl.py (right for the G2553): the first packet gets lost
-    final_low = 0.005
     stray = b''             # bytes nobody asked for
-    # s: one wire, TX low after each reply. The FR2311 BSL hears its own reply, answers it with
-    # 51h, hears that too, and so on for ever. A break >= 3 ms stops it (measured), 0: none
-    quench = 0
-
-    def enter(self):
-        if self.final_low is None:
-            super().enter()
-            return
-        self.test(False)
-        time.sleep(0.01)
-        self.rst(False)
-        time.sleep(0.01)
-        self.test(True)
-        time.sleep(0.005)
-        self.test(False)
-        time.sleep(0.005)
-        self.test(True)
-        time.sleep(0.005)
-        self.rst(True)
-        self.test(False)
-        time.sleep(self.final_low)
-        self.release_test()
-        time.sleep(0.05)
-        self.ser.reset_input_buffer()
 
     def command(self, core, response=True):
-        time.sleep(0.003)               # >= 1.2 ms after the BSL's last byte
+        time.sleep(0.003)
         if self.ser.in_waiting:
             s = self.ser.read(self.ser.in_waiting)
             self.stray += s
             if self.verbose:
                 print('  ? stray', s.hex(' '))
-        try:
-            return super().command(core, response)
-        finally:
-            if self.quench:
-                self.ser.break_condition = True
-                time.sleep(self.quench)
-                self.ser.break_condition = False
-                time.sleep(0.005)
-                self.ser.reset_input_buffer()
-
-    def state(self):
-        """'locked' or 'unlocked' when the BSL answers, else BslError. Changes nothing."""
-        cmd, data = self.command(bytes([CMD_TX_DATA]) + addr3(0xFFE0) + b'\x02\x00')
-        if cmd == RSP_DATA:
-            return 'unlocked'
-        if cmd == RSP_MESSAGE and data == b'\x04':
-            return 'locked'
-        raise BslError('unexpected answer 0x%02X %s' % (cmd, data.hex(' ')))
-
-    def start(self, tries=3):
-        for i in range(1, tries + 1):
-            self.enter()
-            try:
-                s = self.state()
-                if s != 'locked':
-                    raise BslError('BSL is %s right after entry: no reset happened' % s)
-                return i
-            except BslError as e:
-                err = e
-        raise BslError('no BSL after %d entries (%s)' % (tries, err))
-
-    def read_mem(self, addr, n):
-        out = b''
-        while n:
-            k = min(n, BLOCK)
-            cmd, data = self.command(bytes([CMD_TX_DATA]) + addr3(addr) + bytes([k, 0]))
-            if cmd != RSP_DATA or len(data) != k:
-                raise BslError('read %04X: 0x%02X %s' % (addr, cmd, data.hex(' ')))
-            out += data
-            addr, n = addr + k, n - k
-        return out
+        return super().command(core, response)
 
     def unlock_erased(self):
         """After a wrong password: FF password, with a new entry if the session is gone."""
         try:
-            if self.password(FF):
+            if self.password(ERASED):
                 print('erased: same BSL session goes on')
                 return
         except BslError as e:
             print('erased: BSL stopped answering (%s), new entry' % e)
         time.sleep(0.5)
         self.start()
-        if not self.password(FF):
+        if not self.password(ERASED):
             raise BslError('FF password rejected: chip not erased (BSL signature?)')
 
 
 def check_image(mem):
     if any(a < START or a >= END for a in mem):
         raise BslError('image has data outside %04X-%04X' % (START, END - 1))
-    if any(mem.get(a, 0xFF) != 0xFF for a in SIG):
-        raise BslError('image writes the JTAG/BSL signatures, refusing')
-    if (mem.get(0xFFFE, 0xFF), mem.get(0xFFFF, 0xFF)) == (0xFF, 0xFF):
-        raise BslError('image has no reset vector')
-
-
-def differences(bsl, mem):
-    for a, d in segments(mem):
-        got = bsl.read_mem(a, len(d))
-        for i in range(len(d)):
-            if got[i] != d[i]:
-                return '%04X is %02X, expected %02X' % (a + i, got[i], d[i])
-    return None
+    check_common(mem)
 
 
 def do_verify(bsl, mem):

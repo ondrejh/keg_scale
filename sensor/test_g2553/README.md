@@ -7,7 +7,7 @@ That line is **RTS**, although it was taken for DTR; `--rst dtr` selects the oth
 
 The G2553 BSL protocol differs from the FR2111 (SLAU319 vs SLAU550), so `bsl_g2.py` has its
 own packets. `enter()` and `reset()` come from `../fw/tools/bsl.py`: that is the code under
-test. A pass doesn't prove the FR2111 packets, nor fully its P1.7 pin (TDO).
+test (with `final_low = None`: the G2553 needs TEST high after entry, the FR2xx a low). A pass doesn't prove the FR2111 packets, nor fully its P1.7 pin (TDO).
 
 **Result: passed on the G2553**, with 3 wires and with one wire over a cable: BSL entry, flashing,
 two-way UART and reset all work with TEST tied to RX. See [Results](#results-2026-11-24-g2553-ch340).
